@@ -1,463 +1,237 @@
 #pragma once
 
-#include "ofBaseTypes.h"
-#include "ofGLRenderer.h"
+#include "ofGraphicsBaseTypes.h"
+#include "of3dGraphics.h"
+#include "ofPath.h"
 
 class ofRendererCollection: public ofBaseRenderer{
 public:
+	 ofRendererCollection():graphics3d(this){}
 	 ~ofRendererCollection(){}
 
-	 static const string TYPE;
-	 const string & getType(){ return TYPE; }
+	 static const std::string TYPE;
+	 const std::string & getType(){ return TYPE; }
 
-	 ofPtr<ofBaseGLRenderer> getGLRenderer(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 if(renderers[i]->getType()=="GL" || renderers[i]->getType()=="ProgrammableGL"){
-				 return (ofPtr<ofBaseGLRenderer>&)renderers[i];
-			 }
-		 }
-		 return ofPtr<ofGLRenderer>();
-	 }
+	 std::shared_ptr<ofBaseGLRenderer> getGLRenderer();
 
-	 bool rendersPathPrimitives(){return true;}
+	 bool rendersPathPrimitives();
 
-	 void update(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->update();
-		 }
-	 }
+	 void startRender();
+
+	 void finishRender();
 
 
-	 void draw(ofPolyline & poly){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->draw(poly);
-		 }
-	 }
-	 void draw(ofPath & shape){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->draw(shape);
-		 }
-	 }
-	 void draw(ofMesh & vertexData, bool useColors, bool useTextures, bool useNormals){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->draw(vertexData,useColors, useTextures, useNormals);
-		 }
-	 }
+	 using ofBaseRenderer::draw;
 
-	 void draw(ofMesh & vertexData, ofPolyRenderMode mode, bool useColors, bool useTextures, bool useNormals){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->draw(vertexData,mode,useColors,useTextures,useNormals);
-		 }
-	 }
+	 void draw(const ofPolyline & poly) const;
+	 void draw(const ofPath & shape) const;
 
-    void draw( of3dPrimitive& model, ofPolyRenderMode renderType ) {
-        for(int i=0;i<(int)renderers.size();i++) {
-            renderers[i]->draw( model, renderType );
-        }
-    }
+	 void draw(const ofMesh & vertexData, ofPolyRenderMode mode, bool useColors, bool useTextures, bool useNormals) const;
 
-	void draw(ofImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->draw(img,x,y,z,w,h,sx,sy,sw,sh);
-		 }
-	}
+	void draw(const  of3dPrimitive& model, ofPolyRenderMode renderType ) const ;
 
-	void draw(ofFloatImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh){
+	void draw(const  ofNode& node) const ;
+
+	void draw(const ofImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh) const;
+
+	void draw(const ofFloatImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh) const;
+
+	void draw(const ofShortImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh) const;
+
+	void draw(const ofBaseVideoDraws & video, float x, float y, float w, float h) const;
+
+	/*void bind(const ofBaseVideoDraws & video) const{
 		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->draw(img,x,y,z,w,h,sx,sy,sw,sh);
+			renderers[i]->bind(video);
 		}
 	}
 
-	void draw(ofShortImage & img, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh){
+	void unbind(const ofBaseVideoDraws & video) const{
 		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->draw(img,x,y,z,w,h,sx,sy,sw,sh);
+			renderers[i]->unbind(video);
 		}
-	}
+	}*/
 
 
+	glm::mat4 getCurrentMatrix(ofMatrixMode matrixMode_) const;
+
+
+	glm::mat4 getCurrentOrientationMatrix() const;
+
+	glm::mat4 getCurrentNormalMatrix() const;
 
 	//--------------------------------------------
 	// transformations
-	 void pushView(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->pushView();
-		 }
-	 }
-	 void popView(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->popView();
-		 }
-	 }
+	 void pushView();
 
+	 void popView();
 	// setup matrices and viewport (upto you to push and pop view before and after)
 	// if width or height are 0, assume windows dimensions (ofGetWidth(), ofGetHeight())
 	// if nearDist or farDist are 0 assume defaults (calculated based on width / height)
-	void viewport(ofRectangle viewport){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->viewport(viewport);
-		 }
-	}
-	 void viewport(float x = 0, float y = 0, float width = 0, float height = 0, bool vflip=ofIsVFlipped()){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->viewport(x,y,width,height);
-		 }
-	 }
-	 void setupScreenPerspective(float width = 0, float height = 0, float fov = 60, float nearDist = 0, float farDist = 0){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setupScreenPerspective(width,height,fov,nearDist,farDist);
-		 }
-	 }
-	 void setupScreenOrtho(float width = 0, float height = 0, float nearDist = -1, float farDist = 1){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setupScreenOrtho(width,height,nearDist,farDist);
-		 }
-	 }
-	 ofRectangle getCurrentViewport(){
-		 if(renderers.size()){
-			 return renderers[0]->getCurrentViewport();
-		 }else{
-			 return ofRectangle();
-		 }
-	 }
-	 int getViewportWidth(){
-		 if(renderers.size()){
-			 return renderers[0]->getViewportWidth();
-		 }else{
-			 return 0;
-		 }
-	 }
-	 int getViewportHeight(){
-		 if(renderers.size()){
-			 return renderers[0]->getViewportHeight();
-		 }else{
-			 return 0;
-		 }
-	 }
+	void viewport(ofRectangle viewport);
 
-	 void setCoordHandedness(ofHandednessType handedness){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setCoordHandedness(handedness);
-		 }
-	 }
-	 ofHandednessType getCoordHandedness(){
-		 if(renderers.size()){
-			 return renderers[0]->getCoordHandedness();
-		 }else{
-			 return OF_LEFT_HANDED;
-		 }
-	 }
+	 void viewport(float x = 0, float y = 0, float width = -1, float height = -1, bool vflip=true);
+
+	 void setupScreenPerspective(float width = -1, float height = -1, float fov = 60, float nearDist = 0, float farDist = 0);
+
+	 void setupScreenOrtho(float width = -1, float height = -1, float nearDist = -1, float farDist = 1);
+
+	 ofRectangle getCurrentViewport() const;
+
+	 ofRectangle getNativeViewport() const;
+
+	 int getViewportWidth() const;
+	 int getViewportHeight() const;
+
+	 void setCoordHandedness(ofHandednessType handedness);
+	 ofHandednessType getCoordHandedness() const;
 
 	//our openGL wrappers
-	 void pushMatrix(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->pushMatrix();
-		 }
-	 }
-	 void popMatrix(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->popMatrix();
-		 }
-	 }
-	 void translate(float x, float y, float z = 0){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->translate(x,y,z);
-		 }
-	 }
-	 void translate(const ofPoint & p){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->translate(p);
-		 }
-	 }
-	 void scale(float xAmnt, float yAmnt, float zAmnt = 1){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->scale(xAmnt,yAmnt,zAmnt);
-		 }
-	 }
-	 void rotate(float degrees, float vecX, float vecY, float vecZ){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->rotate(degrees,vecX,vecY,vecZ);
-		 }
-	 }
-	 void rotateX(float degrees){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->rotateX(degrees);
-		 }
-	 }
-	 void rotateY(float degrees){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->rotateY(degrees);
-		 }
-	 }
-	 void rotateZ(float degrees){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->rotateZ(degrees);
-		 }
-	 }
-	 void rotate(float degrees){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->rotate(degrees);
-		 }
-	 }
+	 void pushMatrix();
+	 void popMatrix();
+	 void translate(float x, float y, float z = 0);
+	 void translate(const glm::vec3 & p);
+	 void scale(float xAmnt, float yAmnt, float zAmnt = 1);
 
-	void loadIdentityMatrix (void){
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->loadIdentityMatrix();
-		}
-	}
+	 void rotateDeg(float degrees, float vecX, float vecY, float vecZ);
+	 void rotateXDeg(float degrees);
+	 void rotateYDeg(float degrees);
+	 void rotateZDeg(float degrees);
+	 void rotateDeg(float degrees);
 
-	void loadMatrix (const ofMatrix4x4 & m){
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->loadMatrix( m );
-		}
-	}
+	 void rotateRad(float radians, float vecX, float vecY, float vecZ);
+	 void rotateXRad(float radians);
+	 void rotateYRad(float radians);
+	 void rotateZRad(float radians);
+	 void rotateRad(float radians);
+	void loadIdentityMatrix (void);
 
-	void loadMatrix (const float * m){
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->loadMatrix( m );
-		}
-	}
+	void loadMatrix (const glm::mat4 & m);
 
-	void multMatrix (const ofMatrix4x4 & m){
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->multMatrix( m );
-		}
-	}
+	void loadMatrix (const float * m);
 
-	void multMatrix (const float * m){
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->multMatrix( m );
-		}
-	}
+	void multMatrix (const glm::mat4 & m);
+
+	void multMatrix (const float * m);
+
+	void setOrientation(ofOrientation orientation, bool vflip);
+
+	bool isVFlipped() const;
+
+	void matrixMode(ofMatrixMode mode);
+
+	void loadViewMatrix(const glm::mat4& m);
+
+	void multViewMatrix(const glm::mat4& m);
+
+	glm::mat4 getCurrentViewMatrix() const;
 
 
 	// screen coordinate things / default gl values
-	 void setupGraphicDefaults(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setupGraphicDefaults();
-		 }
-	 }
-	 void setupScreen(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setupScreen();
-		 }
-	 }
+	 void setupGraphicDefaults();
+
+	 void setupScreen();
 
 	// color options
-	void setColor(int r, int g, int b){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setColor(r,g,b);
-		 }
-	}
+	void setColor(int r, int g, int b);
 
-	void setColor(int r, int g, int b, int a){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setColor(r,g,b,a);
-		 }
-	}
+	void setColor(int r, int g, int b, int a);
 
-	void setColor(const ofColor & color){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setColor(color);
-		 }
-	}
+	void setColor(const ofColor & color);
 
-	void setColor(const ofColor & color, int _a){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setColor(color,_a);
-		 }
-	}
+	void setColor(const ofColor & color, int _a);
 
-	void setColor(int gray){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setColor(gray);
-		 }
-	};
+	void setColor(int gray);
 
-	void setHexColor( int hexColor ){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setHexColor(hexColor);
-		 }
-	 }; // hex, like web 0xFF0033;
+	void setHexColor( int hexColor );
 
 	// bg color
-	ofFloatColor & getBgColor(){
-		 if(renderers.size()){
-			 return renderers[0]->getBgColor();
-		 }else{
-			 static ofFloatColor c;
-			 return c;
-		 }
-	}
+	ofColor getBackgroundColor();
 
-	bool bClearBg(){
-		 if(renderers.size()){
-			 return renderers[0]->bClearBg();
-		 }else{
-			 return true;
-		 }
-	}
+	void setBackgroundColor(const ofColor & color);
 
-	void background(const ofColor & c){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->background(c);
-		 }
-	}
+	bool getBackgroundAuto();
 
-	void background(float brightness){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->background(brightness);
-		 }
-	}
+	void background(const ofColor & c);
 
-	void background(int hexColor, float _a=255.0f){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->background(hexColor,_a);
-		 }
-	}
+	void background(float brightness);
 
-	void background(int r, int g, int b, int a=255){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->background(r,g,b,a);
-		 }
-	}
+	void background(int hexColor, float _a=255.0f);
 
-	void setBackgroundAuto(bool bManual){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setBackgroundAuto(bManual);
-		 }
-	}
+	void background(int r, int g, int b, int a=255);
 
-	void clear(float r, float g, float b, float a=0){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->clear(r,g,b,a);
-		 }
-	}
-	void clear(float brightness, float a=0){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->clear(brightness,a);
-		 }
-	}
-	void clearAlpha(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->clearAlpha();
-		 }
-	}
+	void setBackgroundAuto(bool bManual);
+
+	void clear();
+
+	void clear(float r, float g, float b, float a=0);
+
+	void clear(float brightness, float a=0);
+
+	void clearAlpha();
 
 	// drawing modes
-	void setRectMode(ofRectMode mode){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setRectMode(mode);
-		 }
-	}
+	void setRectMode(ofRectMode mode);
 
-	ofRectMode getRectMode(){
-		if(renderers.empty()){
-			return OF_RECTMODE_CORNER;
-		}else{
-			return renderers[0]->getRectMode();
-		}
-	}
+	ofRectMode getRectMode();
 
-	void setFillMode(ofFillFlag fill){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setFillMode(fill);
-		 }
-	}
+	void setFillMode(ofFillFlag fill);
 
-	ofFillFlag getFillMode(){
-		if(renderers.empty()){
-			return OF_FILLED;
-		}else{
-			return renderers[0]->getFillMode();
-		}
-	}
+	ofFillFlag getFillMode();
 
-	void setLineWidth(float lineWidth){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setLineWidth(lineWidth);
-		 }
-	}
+	void setLineWidth(float lineWidth);
 
-	void setDepthTest(bool depthTest) {
-		for(int i=0;i<(int)renderers.size();i++){
-			renderers[i]->setDepthTest(depthTest);
-		}
-	}
+	void setDepthTest(bool depthTest);
 
-	void setBlendMode(ofBlendMode blendMode){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setBlendMode(blendMode);
-		 }
-	}
-	void setLineSmoothing(bool smooth){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setLineSmoothing(smooth);
-		 }
-	}
-	void setCircleResolution(int res){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->setCircleResolution(res);
-		 }
-	}
-	void enablePointSprites(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->enablePointSprites();
-		 }
-	}
-	void disablePointSprites(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->disablePointSprites();
-		 }
-	}
+	void setBlendMode(ofBlendMode blendMode);
+	void setLineSmoothing(bool smooth);
+	void setCircleResolution(int res);
+	void enablePointSprites();
+	void disablePointSprites();
 
-	void enableAntiaAliasing(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->enableAntiAliasing();
-		 }
-	}
+	void enableAntiAliasing();
 
-	void disableAntiAliasing(){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->disableAntiAliasing();
-		 }
-	}
+	void disableAntiAliasing();
+
+	void setBitmapTextMode(ofDrawBitmapMode mode);
+
+	ofStyle getStyle() const;
+
+	void pushStyle();
+
+	void popStyle();
+
+	void setStyle(const ofStyle & style);
+
+	void setCurveResolution(int res);
+
+	void setPolyMode(ofPolyWindingMode mode);
 
 	// drawing
-	void drawLine(float x1, float y1, float z1, float x2, float y2, float z2){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawLine(x1,y1,z1,x2,y2,z2);
-		 }
-	}
+	void drawLine(float x1, float y1, float z1, float x2, float y2, float z2) const;
 
-	void drawRectangle(float x, float y, float z, float w, float h){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawRectangle(x,y,z,w,h);
-		 }
-	}
+	void drawRectangle(float x, float y, float z, float w, float h) const;
 
-	void drawTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawTriangle(x1,y1,z1,x2,y2,z2,x3,y3,z3);
-		 }
-	}
+	void drawTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3) const;
 
-	void drawCircle(float x, float y, float z, float radius){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawCircle(x,y,z,radius);
-		 }
-	}
+	void drawCircle(float x, float y, float z, float radius) const;
 
-	void drawEllipse(float x, float y, float z, float width, float height){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawEllipse(x,y,z,width,height);
-		 }
-	}
+	void drawEllipse(float x, float y, float z, float width, float height) const;
 
-	void drawString(string text, float x, float y, float z, ofDrawBitmapMode mode){
-		 for(int i=0;i<(int)renderers.size();i++){
-			 renderers[i]->drawString(text, x,y,z,mode);
-		 }
-	}
+	void drawString(std::string text, float x, float y, float z) const;
 
-	vector<ofPtr<ofBaseRenderer> > renderers;
+	void drawString(const ofTrueTypeFont & font, std::string text, float x, float y) const;
+
+	virtual void bind(const ofCamera & camera, const ofRectangle & viewport);
+	virtual void unbind(const ofCamera & camera);
+
+	const of3dGraphics & get3dGraphics() const;
+
+	of3dGraphics & get3dGraphics();
+
+	ofPath & getPath();
+
+	std::vector<std::shared_ptr<ofBaseRenderer> > renderers;
+	of3dGraphics graphics3d;
+	ofPath path;
 };

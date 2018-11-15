@@ -3,9 +3,13 @@
 
 
 #include "ofMatrix4x4.h"
+#include "ofConstants.h"
+
 #include <limits>
 #include <stdlib.h>
-#include "ofConstants.h"
+#include <iomanip>
+
+using namespace std;
 
 #if (_MSC_VER)
 #undef min
@@ -626,7 +630,7 @@ bool invert_4x3( const ofMatrix4x4& src, ofMatrix4x4 & dst )
 		return invert_4x3(tm,dst);
     }
 
-    register float r00, r01, r02,
+    float r00, r01, r02,
 	r10, r11, r12,
 	r20, r21, r22;
 	// Copy rotation components directly into registers for speed
@@ -640,7 +644,7 @@ bool invert_4x3( const ofMatrix4x4& src, ofMatrix4x4 & dst )
     dst._mat[0][2] = r01*r12 - r02*r11;
 
 	// Compute determinant of rot from 3 elements just computed
-    register float one_over_det = 1.0/(r00*dst._mat[0][0] + r10*dst._mat[0][1] + r20*dst._mat[0][2]);
+    float one_over_det = 1.0/(r00*dst._mat[0][0] + r10*dst._mat[0][1] + r20*dst._mat[0][2]);
     r00 *= one_over_det; r10 *= one_over_det; r20 *= one_over_det;  // Saves on later computations
 
 	// Finish computing inverse of rot
@@ -915,8 +919,8 @@ bool ofMatrix4x4::getPerspective(double& fovy,double& aspectRatio,
 
 void ofMatrix4x4::makeLookAtViewMatrix(const ofVec3f& eye,const ofVec3f& center,const ofVec3f& up)
 {
-	ofVec3f zaxis = (eye - center).normalized();
-	ofVec3f xaxis = up.getCrossed(zaxis).normalized();
+	ofVec3f zaxis = (eye - center).getNormalized();
+	ofVec3f xaxis = up.getCrossed(zaxis).getNormalized();
 	ofVec3f yaxis = zaxis.getCrossed(xaxis);
 
 	_mat[0].set(xaxis.x, yaxis.x, zaxis.x, 0);
@@ -927,14 +931,14 @@ void ofMatrix4x4::makeLookAtViewMatrix(const ofVec3f& eye,const ofVec3f& center,
 
 void ofMatrix4x4::makeLookAtMatrix(const ofVec3f& eye,const ofVec3f& center,const ofVec3f& up)
 {
-	ofVec3f zaxis = (eye - center).normalized();
-	ofVec3f xaxis = up.getCrossed(zaxis).normalized();
+	ofVec3f zaxis = (eye - center).getNormalized();
+	ofVec3f xaxis = up.getCrossed(zaxis).getNormalized();
 	ofVec3f yaxis = zaxis.getCrossed(xaxis);
 
 	_mat[0].set(xaxis.x, xaxis.y, xaxis.z, 0);
 	_mat[1].set(yaxis.x, yaxis.y, yaxis.z, 0);
 	_mat[2].set(zaxis.x, zaxis.y, zaxis.z, 0);
-	_mat[3] = eye;
+	_mat[3].set(eye.x, eye.y, eye.z, 1);
 }
 
 void ofMatrix4x4::getLookAt(ofVec3f& eye,ofVec3f& center,ofVec3f& up,float lookDistance) const
@@ -1538,3 +1542,55 @@ void ofMatrix4x4::decompose( ofVec3f& t,
 }
 
 #undef SET_ROW
+
+std::ostream& operator<<(std::ostream& os, const ofMatrix4x4& M) {
+	int w = 8;
+	os	<< std::setw(w)
+		<< M._mat[0][0] << ", " << std::setw(w)
+		<< M._mat[0][1] << ", " << std::setw(w)
+		<< M._mat[0][2] << ", " << std::setw(w)
+		<< M._mat[0][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[1][0] << ", " << std::setw(w)
+		<< M._mat[1][1] << ", " << std::setw(w)
+		<< M._mat[1][2] << ", " << std::setw(w)
+		<< M._mat[1][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[2][0] << ", " << std::setw(w)
+		<< M._mat[2][1] << ", " << std::setw(w)
+		<< M._mat[2][2] << ", " << std::setw(w)
+		<< M._mat[2][3] << std::endl;
+
+	os	<< std::setw(w)
+		<< M._mat[3][0] << ", " << std::setw(w)
+		<< M._mat[3][1] << ", " << std::setw(w)
+		<< M._mat[3][2] << ", " << std::setw(w)
+		<< M._mat[3][3];
+
+	return os;
+}
+
+std::istream& operator>>(std::istream& is, ofMatrix4x4& M) {
+	is >> M._mat[0][0]; is.ignore(2);
+	is >> M._mat[0][1]; is.ignore(2);
+	is >> M._mat[0][2]; is.ignore(2);
+	is >> M._mat[0][3]; is.ignore(1);
+
+	is >> M._mat[1][0]; is.ignore(2);
+	is >> M._mat[1][1]; is.ignore(2);
+	is >> M._mat[1][2]; is.ignore(2);
+	is >> M._mat[1][3]; is.ignore(1);
+
+	is >> M._mat[2][0]; is.ignore(2);
+	is >> M._mat[2][1]; is.ignore(2);
+	is >> M._mat[2][2]; is.ignore(2);
+	is >> M._mat[2][3]; is.ignore(1);
+
+	is >> M._mat[3][0]; is.ignore(2);
+	is >> M._mat[3][1]; is.ignore(2);
+	is >> M._mat[3][2]; is.ignore(2);
+	is >> M._mat[3][3];
+	return is;
+}

@@ -19,14 +19,14 @@ void ofApp::setup(){
 	cosine=0;
 	sine=0;
 	tangent=0;
-	rotationSpeed=0.01f;
+	rotationSpeed=0.01;
 	radius = 180;
 	center.set(ofGetWidth()*0.3f, ofGetHeight()*0.6f, 0);
 	
 	ofSetCircleResolution(40);
 	
 	
-	angleArc.setArcResolution(360);
+	angleArc.setCircleResolution(360);
 	angleArc.setFilled(true);
 	angleArc.setColor(ofColor(240, 130, 10));
 	
@@ -35,7 +35,9 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-	if (!ofGetMousePressed()) {//press the mouse to stop the angle from incrementing.
+	cout << rotationSpeed << endl;
+    
+    if (!ofGetMousePressed()) {//press the mouse to stop the angle from incrementing.
 		angle+=rotationSpeed;//at each update the angle get's incremented 
 	}
 	if (angle>=TWO_PI) { //if the angle is more than or equal to two PI (a full rotation measured in Radians) then make it zero.
@@ -46,6 +48,7 @@ void ofApp::update(){
 	cosine=cos(angle);
 	sine=sin(angle);
 	tangent=tan(angle);
+    
 	
 	
 	point.set(cosine * radius, sine * radius, 0);//here we set the cyan circle position
@@ -65,11 +68,11 @@ void ofApp::draw(){
 	
 	//draw the yellow circle
 	ofSetColor(240, 230, 10);
-	ofCircle(0,0, radius);
+	ofDrawCircle(0,0, radius);
 	
 	//draw the cyan circle that's moving over the yellow circle's perimeter 
 	ofSetColor(0, 140, 255);
-	ofCircle(point, 10);
+	ofDrawCircle(point, 10);
 	
 	//draw the orange arc that represents the angle
 	angleArc.draw();
@@ -78,19 +81,19 @@ void ofApp::draw(){
 	//draw the axis lines
 	ofSetColor(20);
 	ofSetLineWidth(1);
-	ofLine(-radius * 1.3f, 0, radius * 2, 0);
-	ofLine(0, -radius * 2, 0, radius * 1.3f);
+	ofDrawLine(-radius * 1.3f, 0, radius * 2, 0);
+	ofDrawLine(0, -radius * 2, 0, radius * 1.3f);
 	
 	ofSetColor(180);
-	ofLine(0, -radius , radius * 2, -radius);
-	ofLine(0,  radius , radius * 2,  radius);
-	ofLine(-radius, 0 ,-radius,  -radius * 2);
-	ofLine( radius, 0 , radius,  -radius * 2);
+	ofDrawLine(0, -radius , radius * 2, -radius);
+	ofDrawLine(0,  radius , radius * 2,  radius);
+	ofDrawLine(-radius, 0 ,-radius,  -radius * 2);
+	ofDrawLine( radius, 0 , radius,  -radius * 2);
 	
 	//draw the pink bars
 	ofSetColor(255, 0, 127);
-	ofRect(0, -radius * 2, cosine * radius, 20);
-	ofRect(radius * 2, 0, -20, sine * radius);
+	ofDrawRectangle(0, -radius * 2, cosine * radius, 20);
+	ofDrawRectangle(radius * 2, 0, -20, sine * radius);
 	
 	
 	ofSetLineWidth(3);
@@ -98,18 +101,18 @@ void ofApp::draw(){
 	
 	//draw lines from the cyan ball to the pink bars
 	ofSetColor(255, 0, 50);
-	ofLine(point.x, point.y, cosine * radius, -radius * 2);
-	ofLine(point.x, point.y, radius * 2, sine * radius);
+	ofDrawLine(point.x, point.y, cosine * radius, -radius * 2);
+	ofDrawLine(point.x, point.y, radius * 2, sine * radius);
 	
 	//draw the line from the yellow circle's center to the cyan circle 
 	ofSetColor(0, 127, 255);
-	ofLine(0, 0, point.x, point.y);
+	ofDrawLine(0, 0, point.x, point.y);
 	
 
 	//draw the dark lines inside the yellow circle that represent the distance from the axis to the cyan circle
 	ofSetColor(40);
-	ofLine(0, sine * radius, cosine * radius, sine * radius);
-	ofLine(cosine * radius, 0, cosine * radius, sine * radius);
+	ofDrawLine(0, sine * radius, cosine * radius, sine * radius);
+	ofDrawLine(cosine * radius, 0, cosine * radius, sine * radius);
 	
 
 	// draw the info text
@@ -168,6 +171,16 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
 
 }
 

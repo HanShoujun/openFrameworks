@@ -6,9 +6,14 @@
 //
 
 #include "ofxiOSExternalDisplay.h"
-#include "ofxiOSAppDelegate.h"
+#include <TargetConditionals.h>
 
-#ifdef __IPHONE_4_3
+using namespace std;
+
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
+
+
+#include "ofxiOSAppDelegate.h"
 
 //-----------------------------------------------------------------------------------------
 static vector<ofxiOSExternalDisplay *> externalDisplayListeners;

@@ -1,8 +1,6 @@
 #pragma once
 
-#include "ofMain.h"
 #include "ofxiOS.h"
-#include "ofxiOSExtras.h"
 
 class ofApp : public ofxiOSApp{
 	
@@ -38,5 +36,5 @@ class ofApp : public ofxiOSApp{
         void muteOnPressed();
         void muteOffPressed();
 
-        ofiPhoneVideoPlayer video;
+        ofxiOSVideoPlayer video;
 };

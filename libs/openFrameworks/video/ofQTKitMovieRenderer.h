@@ -2,6 +2,9 @@
 // Copyright (c) 2012 openFrameworks team
 // openFrameworks is released under the MIT License. See libs/_Licence.txt
 
+#if !defined(MAC_OS_X_VERSION_10_12) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
+#ifdef OF_VIDEO_PLAYER_QTKIT
+
 #import <Cocoa/Cocoa.h>
 #import <Quartz/Quartz.h>
 #import <QTKit/QTKit.h>
@@ -12,11 +15,11 @@
 {
 	QTMovie * _movie;
 	QTVisualContextRef _visualContext;
-    
+
 	CVOpenGLTextureCacheRef _textureCache;
 	CVOpenGLTextureRef _latestTextureFrame;
 	CVPixelBufferRef _latestPixelFrame;
-    
+
 	NSSize movieSize;
 	QTTime movieDuration;
 	NSInteger frameCount;
@@ -84,3 +87,6 @@
 - (void)synchronizeSeek;
 
 @end
+
+#endif
+#endif

@@ -1,5 +1,6 @@
 #include "ofxToggle.h"
 #include "ofGraphics.h"
+using namespace std;
 
 ofxToggle::ofxToggle(ofParameter<bool> _bVal, float width, float height){
 	setup(_bVal,width,height);
@@ -19,14 +20,14 @@ ofxToggle * ofxToggle::setup(ofParameter<bool> _bVal, float width, float height)
 	checkboxRect.set(1, 1, b.height - 2, b.height - 2);
 
 	value.addListener(this,&ofxToggle::valueChanged);
-	ofRegisterMouseEvents(this,OF_EVENT_ORDER_BEFORE_APP);
-	generateDraw();
+	registerMouseEvents();
+	setNeedsRedraw();
 
 	return this;
 
 }
 
-ofxToggle * ofxToggle::setup(string toggleName, bool _bVal, float width, float height){
+ofxToggle * ofxToggle::setup(const std::string& toggleName, bool _bVal, float width, float height){
 	value.set(toggleName,_bVal);
 	return setup(value,width,height);
 }
@@ -91,7 +92,23 @@ void ofxToggle::generateDraw(){
 	cross.moveTo(b.getPosition()+checkboxRect.getTopRight());
 	cross.lineTo(b.getPosition()+checkboxRect.getBottomLeft());
 
-	textMesh = getTextMesh(getName(), b.x+textPadding + checkboxRect.width, b.y+b.height / 2 + 4);
+	std::string name;
+	auto textX = b.x + textPadding + checkboxRect.width;
+	if(getTextBoundingBox(getName(), textX, 0).getMaxX() > b.getMaxX() - textPadding){
+		for(auto c: ofUTF8Iterator(getName())){
+			auto next = name;
+			ofUTF8Append(next, c);
+			if(getTextBoundingBox(next,textX,0).getMaxX() > b.getMaxX() - textPadding){
+				break;
+			}else{
+				name = next;
+			}
+		}
+	}else{
+		name = getName();
+	}
+
+	textMesh = getTextMesh(name, textX, b.y+b.height / 2 + 4);
 }
 
 void ofxToggle::render(){
@@ -158,5 +175,5 @@ ofAbstractParameter & ofxToggle::getParameter(){
 }
 
 void ofxToggle::valueChanged(bool & value){
-	generateDraw();
+    setNeedsRedraw();
 }

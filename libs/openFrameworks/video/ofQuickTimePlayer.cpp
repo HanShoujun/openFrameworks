@@ -1,7 +1,7 @@
 #include "ofQuickTimePlayer.h"
 #include "ofUtils.h"
 
-#ifndef TARGET_LINUX
+#if !defined(TARGET_LINUX) && (!defined(MAC_OS_X_VERSION_10_12) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12)
 #ifdef  OF_VIDEO_PLAYER_QUICKTIME
 
 bool  	createMovieFromPath(char * path, Movie &movie);
@@ -29,7 +29,7 @@ bool 	createMovieFromPath(char * path, Movie &movie){
 			ofLogError("ofQuickTimePlayer") << "createMovieFromPath(): couldn't load movie, FSPathMakeRef failed: OSErr " << result;
 			return false;
 		}
-		result = FSGetCatalogInfo(&fsref, kFSCatInfoNone, NULL, NULL, &theFSSpec, NULL);
+		result = FSGetCatalogInfo(&fsref, kFSCatInfoNone, nullptr, nullptr, &theFSSpec, nullptr);
 		if (result) {
 			ofLogError("ofQuickTimePlayer") << "createMovieFromPath(): couldn't load movie, FSGetCatalogInfo failed: OSErr ", result;
 			return false;
@@ -49,7 +49,7 @@ bool 	createMovieFromPath(char * path, Movie &movie){
 			return false;
 		}
 	} else {
-		ofLogError("ofQuickTimePlayer") << "createMovoeFromPath(): couldn't load movie, OpenMovieFile failed: OSErr " << result;
+		ofLogError("ofQuickTimePlayer") << "createMovieFromPath(): couldn't load movie, OpenMovieFile failed: OSErr " << result;
 		return false;
 	}
 
@@ -105,9 +105,9 @@ ofQuickTimePlayer::ofQuickTimePlayer (){
 	//--------------------------------------------------------------
    #if defined(TARGET_WIN32) || defined(TARGET_OSX)
     //--------------------------------------------------------------
-    	moviePtr	 				= NULL;
+    	moviePtr	 				= nullptr;
     	allocated 					= false;
-        offscreenGWorld				= NULL;
+        offscreenGWorld				= nullptr;
 	//--------------------------------------------------------------
 	#endif
 	//--------------------------------------------------------------
@@ -141,12 +141,12 @@ ofQuickTimePlayer::~ofQuickTimePlayer(){
 }
 
 //---------------------------------------------------------------------------
-unsigned char * ofQuickTimePlayer::getPixels(){
-	return pixels.getPixels();
+ofPixels& ofQuickTimePlayer::getPixels(){
+	return pixels;
 }
 
 //---------------------------------------------------------------------------
-ofPixelsRef ofQuickTimePlayer::getPixelsRef(){
+const ofPixels& ofQuickTimePlayer::getPixels() const {
 	return pixels;
 }
 
@@ -197,7 +197,7 @@ void ofQuickTimePlayer::update(){
 }
 
 //---------------------------------------------------------------------------
-bool ofQuickTimePlayer::isFrameNew(){
+bool ofQuickTimePlayer::isFrameNew() const{
 	return bIsFrameNew;
 }
 //---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ void ofQuickTimePlayer::closeMovie(){
 	    DisposeMovie (moviePtr);
 		DisposeMovieDrawingCompleteUPP(myDrawCompleteProc);
 
-		moviePtr = NULL;
+		moviePtr = nullptr;
         
     }
 
@@ -241,12 +241,13 @@ void ofQuickTimePlayer::createImgMemAndGWorld(){
 	movieRect.bottom 		= height;
 	movieRect.right 		= width;
 	offscreenGWorldPixels = new unsigned char[4 * width * height + 32];
+	allocated				= true;
 	pixels.allocate(width,height,OF_IMAGE_COLOR);
 
 	#if defined(TARGET_OSX) && defined(__BIG_ENDIAN__)
-		QTNewGWorldFromPtr (&(offscreenGWorld), k32ARGBPixelFormat, &(movieRect), NULL, NULL, 0, (offscreenGWorldPixels), 4 * width);		
+		QTNewGWorldFromPtr (&(offscreenGWorld), k32ARGBPixelFormat, &(movieRect), nullptr, nullptr, 0, (offscreenGWorldPixels), 4 * width);
 	#else
-		QTNewGWorldFromPtr (&(offscreenGWorld), k24RGBPixelFormat, &(movieRect), NULL, NULL, 0, (pixels.getPixels()), 3 * width);
+		QTNewGWorldFromPtr (&(offscreenGWorld), k24RGBPixelFormat, &(movieRect), nullptr, nullptr, 0, (pixels.getPixels()), 3 * width);
 	#endif
 
 	LockPixels(GetGWorldPixMap(offscreenGWorld));
@@ -257,7 +258,7 @@ void ofQuickTimePlayer::createImgMemAndGWorld(){
     // if both are called, the app will crash after a few ofVideoPlayer object have been deleted
 
 	#ifndef TARGET_WIN32
-        SetGWorld (offscreenGWorld, NULL);
+        SetGWorld (offscreenGWorld, nullptr);
 	#endif
 	SetMovieGWorld (moviePtr, offscreenGWorld, nil);
 
@@ -269,7 +270,7 @@ void ofQuickTimePlayer::createImgMemAndGWorld(){
 
 
 //---------------------------------------------------------------------------
-bool ofQuickTimePlayer::loadMovie(string name){
+bool ofQuickTimePlayer::load(string name){
 
 
 	//--------------------------------------
@@ -330,7 +331,7 @@ bool ofQuickTimePlayer::loadMovie(string name){
 			createImgMemAndGWorld();
 		}
 
-		if (moviePtr == NULL){
+		if (moviePtr == nullptr){
 			return false;
 		}
 
@@ -547,7 +548,7 @@ void ofQuickTimePlayer::setLoopState(ofLoopType state){
 }
 
 //---------------------------------------------------------------------------
-ofLoopType ofQuickTimePlayer::getLoopState(){
+ofLoopType ofQuickTimePlayer::getLoopState() const{
 	return currentLoopState;
 }
 
@@ -620,7 +621,7 @@ void ofQuickTimePlayer::setFrame(int frame){
 
 
 //---------------------------------------------------------------------------
-float ofQuickTimePlayer::getDuration(){
+float ofQuickTimePlayer::getDuration() const{
 	if( !isLoaded() ){
 		ofLogError("ofQuickTimePlayer") << "getDuration(): movie not loaded";
 		return 0.0;
@@ -639,7 +640,7 @@ float ofQuickTimePlayer::getDuration(){
 }
 
 //---------------------------------------------------------------------------
-float ofQuickTimePlayer::getPosition(){
+float ofQuickTimePlayer::getPosition() const{
 	if( !isLoaded() ){
 		ofLogError("ofQuickTimePlayer") << "getPosition(): movie not loaded";
 		return 0.0;
@@ -662,7 +663,7 @@ float ofQuickTimePlayer::getPosition(){
 }
 
 //---------------------------------------------------------------------------
-int ofQuickTimePlayer::getCurrentFrame(){
+int ofQuickTimePlayer::getCurrentFrame() const{
 	if( !isLoaded() ){
 		ofLogError("ofQuickTimePlayer") << "getCurrentFrame(): movie not loaded";
 		return 0;
@@ -703,14 +704,14 @@ bool ofQuickTimePlayer::setPixelFormat(ofPixelFormat pixelFormat){
 }
 
 //---------------------------------------------------------------------------
-ofPixelFormat ofQuickTimePlayer::getPixelFormat(){
+ofPixelFormat ofQuickTimePlayer::getPixelFormat() const{
 	//note if you support more than one pixel format you will need to return a ofPixelFormat variable. 
 	return OF_PIXELS_RGB;
 }
 
 
 //---------------------------------------------------------------------------
-bool ofQuickTimePlayer::getIsMovieDone(){
+bool ofQuickTimePlayer::getIsMovieDone() const{
 	if( !isLoaded() ){
 		ofLogError("ofQuickTimePlayer") << "getIsMovieDone(): movie not loaded";
 		return false;
@@ -845,37 +846,37 @@ void ofQuickTimePlayer::clearMemory(){
 }
 
 //---------------------------------------------------------------------------
-float ofQuickTimePlayer::getSpeed(){
+float ofQuickTimePlayer::getSpeed() const{
 	return speed;
 }
 
 //------------------------------------
-int ofQuickTimePlayer::getTotalNumFrames(){
+int ofQuickTimePlayer::getTotalNumFrames() const{
 	return nFrames;
 }
 
 //----------------------------------------------------------
-float ofQuickTimePlayer::getWidth(){
+float ofQuickTimePlayer::getWidth() const{
 	return (float)width;
 }
 
 //----------------------------------------------------------
-float ofQuickTimePlayer::getHeight(){
+float ofQuickTimePlayer::getHeight() const{
 	return (float)height;
 }
 
 //----------------------------------------------------------
-bool ofQuickTimePlayer::isPaused(){
+bool ofQuickTimePlayer::isPaused() const{
 	return bPaused;
 }
 
 //----------------------------------------------------------
-bool ofQuickTimePlayer::isLoaded(){
+bool ofQuickTimePlayer::isLoaded() const{
 	return bLoaded;
 }
 
 //----------------------------------------------------------
-bool ofQuickTimePlayer::isPlaying(){
+bool ofQuickTimePlayer::isPlaying() const{
 	return bPlaying;
 }
 

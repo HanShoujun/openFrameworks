@@ -2,7 +2,14 @@
 // openFrameworks is released under the MIT License. See libs/_Licence.txt
 #pragma once
 
-#include "ofMain.h"
+#include "ofConstants.h"
+#include "ofEvents.h"
+#include "ofVideoBaseTypes.h"
+#include "ofPixels.h"
+
+#ifdef OF_VIDEO_CAPTURE_QTKIT
+
+#if !defined(MAC_OS_X_VERSION_10_12) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
 
 //using this #ifdef lets this .h file be included in cpp files without throwing errors
 //but when included in .m files it works correctly.  another useful trick for mixing oF/ObjC
@@ -12,9 +19,9 @@
 
 class ofVideoSavedEventArgs : public ofEventArgs {
   public:
-	string videoPath;
+	std::string videoPath;
 	ofBaseVideoGrabber* grabber;
-	string error; //"" if there is no error
+	std::string error; //"" if there is no error
 };
 
 class ofQTKitGrabber : public ofBaseVideoGrabber {
@@ -22,69 +29,70 @@ class ofQTKitGrabber : public ofBaseVideoGrabber {
 		ofQTKitGrabber();
 		~ofQTKitGrabber();
 
-	    bool            initGrabber(int w, int h);
+	    bool            setup(int w, int h);
 	    //initGrabberNoPreview if you want to only use this grabber for recording
 	    bool            initGrabberWithoutPreview();
-		bool            isFrameNew();
+		bool            isFrameNew() const;
 		void            update();
-		float           getWidth();
-		float           getHeight();
-		unsigned char * getPixels();
-		ofPixelsRef     getPixelsRef();
+		float           getWidth() const;
+		float           getHeight() const;
+        ofPixels&	    getPixels();
+        const ofPixels& getPixels() const;
 		void            setVerbose(bool bTalkToMe);
 
-		vector <ofVideoDevice> listDevices(); 
-		vector <string> & listAudioDevices();
-		vector <string> & listVideoDevices();
+		std::vector <ofVideoDevice> listDevices() const;
+		const std::vector <std::string> & listAudioDevices() const;
+		const std::vector <std::string> & listVideoDevices() const;
 
 		bool            initRecording();
-		vector <string> & listVideoCodecs();
-		vector <string> & listAudioCodecs();
-		void            setVideoCodec(string videoCodecIDString);
-		void            setAudioCodec(string audioCodecIDString);
+		const std::vector <std::string> & listVideoCodecs() const;
+		const std::vector <std::string> & listAudioCodecs() const;
+		void            setVideoCodec(std::string videoCodecIDString);
+		void            setAudioCodec(std::string audioCodecIDString);
 		void            setUseAudio(bool bUseAudio);
-		void            startRecording(string filePath);
+		void            startRecording(std::string filePath);
 		void            stopRecording();
-		bool            isRecording();
-	    bool            isRecordingReady();
-		bool            isReady();
+		bool            isRecording() const;
+	    bool            isRecordingReady() const;
+        bool            isReady() const;
+        bool            isInitialized() const;
 
 		void            close();
 
 		void            setDeviceID(int videoDeviceID);
-		void            setDeviceID(string videoDeviceIDString);
-		int             getDeviceID();
+		void            setDeviceID(std::string videoDeviceIDString);
+		int             getDeviceID() const;
 
 		void            setVideoDeviceID(int videoDeviceID);
-		void            setVideoDeviceID(string videoDeviceIDString);
-		int             getVideoDeviceID();
+		void            setVideoDeviceID(std::string videoDeviceIDString);
+		int             getVideoDeviceID() const;
 
 		void            setAudioDeviceID(int audioDeviceID);
-		void            setAudioDeviceID(string audioDeviceIDString);
-		int             getAudioDeviceID();
+		void            setAudioDeviceID(std::string audioDeviceIDString);
+		int             getAudioDeviceID() const;
 
 		void            setDesiredFrameRate(int framerate);
 		bool            setPixelFormat(ofPixelFormat pixelFormat);
-		ofPixelFormat   getPixelFormat();
-	    bool			hasPreview();
+		ofPixelFormat   getPixelFormat() const;
+	    bool			hasPreview() const;
 		void            videoSettings();
 
 		ofEvent<ofVideoSavedEventArgs> videoSavedEvent;
 	protected:
 
-		bool confirmInit();
+		bool confirmInit() const;
 		ofPixelFormat pixelFormat;
 	    ofPixels pixels;
-    
-		vector <string>  videoDeviceVec;
-		vector <string>  audioDeviceVec;
-		vector <string>  videoCodecsVec;
-		vector <string>  audioCodecsVec;
+
+		mutable std::vector <std::string>  videoDeviceVec;
+		mutable std::vector <std::string>  audioDeviceVec;
+		mutable std::vector <std::string>  videoCodecsVec;
+		mutable std::vector <std::string>  audioCodecsVec;
 
 		int videoDeviceID;
 		int audioDeviceID;
-		string videoCodecIDString;
-		string audioCodecIDString;
+		std::string videoCodecIDString;
+		std::string audioCodecIDString;
 
 		bool isInited;
 		bool bUseAudio;
@@ -96,4 +104,5 @@ class ofQTKitGrabber : public ofBaseVideoGrabber {
 		#endif
 };
 
-
+#endif
+#endif

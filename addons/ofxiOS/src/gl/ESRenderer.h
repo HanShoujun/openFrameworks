@@ -6,22 +6,25 @@
 //  Copyright MSA Visuals Ltd. 2010. All rights reserved.
 //
 
+#pragma once
+
 #import <QuartzCore/QuartzCore.h>
 
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/EAGLDrawable.h>
 
 typedef enum {
-    ESRendererVersion_11,
-    ESRendererVersion_20
+    ESRendererVersion_11 = 1,
+    ESRendererVersion_20 = 2,
+    ESRendererVersion_30 = 3
 } ESRendererVersion;
 
 @protocol ESRenderer <NSObject>
 
-- (void) startRender;
-- (void) finishRender;
+- (void)startRender;
+- (void)finishRender;
 - (BOOL)resizeFromLayer:(CAEAGLLayer *)layer;
-- (EAGLContext*) context;
+- (EAGLContext*)context;
 
 - (NSInteger)getWidth;
 - (NSInteger)getHeight;

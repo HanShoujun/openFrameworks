@@ -5,113 +5,95 @@
  *      Author: arturo
  */
 
-#ifndef OFGLUTILS_H_
-#define OFGLUTILS_H_
+#pragma once
 
 #include "ofConstants.h"
-#include "ofTypes.h"
-#include "ofPixels.h"
+#include "ofGraphicsConstants.h"
 
 class ofShader;
 class ofGLProgrammableRenderer;
 class ofBaseGLRenderer;
+class ofTexture;
 
-enum ofPrimitiveMode{
-	OF_PRIMITIVE_TRIANGLES,
-	OF_PRIMITIVE_TRIANGLE_STRIP,
-	OF_PRIMITIVE_TRIANGLE_FAN,
-	OF_PRIMITIVE_LINES,
-	OF_PRIMITIVE_LINE_STRIP,
-	OF_PRIMITIVE_LINE_LOOP,
-	OF_PRIMITIVE_POINTS
-};
+template<typename T>
+class ofPixels_;
 
-enum ofPolyRenderMode{
-	OF_MESH_POINTS,
-	OF_MESH_WIREFRAME,
-	OF_MESH_FILL
-};
+typedef ofPixels_<unsigned char> ofPixels;
+typedef ofPixels_<float> ofFloatPixels;
+typedef ofPixels_<unsigned short> ofShortPixels;
+typedef ofPixels & ofPixelsRef;
 
-int ofGetGlInternalFormat(const ofPixels& pix);
-int ofGetGlInternalFormat(const ofShortPixels& pix);
-int ofGetGlInternalFormat(const ofFloatPixels& pix);
+enum ofImageType: short;
+enum ofPixelFormat: short;
+
+int ofGetGLInternalFormat(const ofPixels & pixels);
+int ofGetGLInternalFormat(const ofShortPixels & pixels);
+int ofGetGLInternalFormat(const ofFloatPixels & pixels);
+
+OF_DEPRECATED_MSG("Use ofGetGLInternalFormat() instead", int ofGetGlInternalFormat(const ofPixels & pixels));
+OF_DEPRECATED_MSG("Use ofGetGLInternalFormat() instead", int ofGetGlInternalFormat(const ofShortPixels & pixels));
+OF_DEPRECATED_MSG("Use ofGetGLInternalFormat() instead", int ofGetGlInternalFormat(const ofFloatPixels & pixels));
 
 //---------------------------------
 // this is helpful for debugging ofTexture
-string ofGetGlInternalFormatName(int glInternalFormat);
-int ofGetGLFormatFromInternal(int glInternalFormat);
-int ofGetGlTypeFromInternal(int glInternalFormat);
 
-ofPtr<ofGLProgrammableRenderer> ofGetGLProgrammableRenderer();
-ofPtr<ofBaseGLRenderer> ofGetGLRenderer();
+std::string ofGetGLInternalFormatName(int glInternalFormat);
+int ofGetGLFormatFromInternal(int gInternalFormat);
+int ofGetGLTypeFromInternal(int glInternalFormat);
 
-template<class T>
-int ofGetGlFormat(const ofPixels_<T> & pixels) {
-	switch(pixels.getNumChannels()) {
-		case 4:
-			return GL_RGBA;
-			break;
-		case 3:
-			return GL_RGB;
-			break;
-		case 2:
-#ifndef TARGET_OPENGLES
-			if(ofGetGLProgrammableRenderer()){
-				return GL_RG;
-			}else{
-#endif
-				return GL_LUMINANCE_ALPHA;
-#ifndef TARGET_OPENGLES
-			}
-#endif
-			break;
+OF_DEPRECATED_MSG("Use ofGetGLInternalFormatName() instead", std::string ofGetGlInternalFormatName(int glInternalFormat));
+OF_DEPRECATED_MSG("Use ofGetGLTypeFromInternal() instead", int ofGetGlTypeFromInternal(int glInternalFormat));
 
-		case 1:
-#ifndef TARGET_OPENGLES
-			if(ofGetGLProgrammableRenderer()){
-				return GL_RED;
-			}else{
-#endif
-				return GL_LUMINANCE;
-#ifndef TARGET_OPENGLES
-			}
-#endif
-			break;
+std::shared_ptr<ofBaseGLRenderer> ofGetGLRenderer();
 
-		default:
-			ofLogError("ofGLUtils") << "ofGetGlFormatAndType(): internal format not recognized, returning GL_RGBA";
-			return GL_RGBA;
-			break;
-	}
-}
+int ofGetGLType(const ofPixels & pixels);
+int ofGetGLType(const ofShortPixels & pixels);
+int ofGetGLType(const ofFloatPixels & pixels);
 
-
-int ofGetGlType(const ofPixels & pixels);
-int ofGetGlType(const ofShortPixels & pixels);
-int ofGetGlType(const ofFloatPixels & pixels);
+OF_DEPRECATED_MSG("Use ofGetGLType() instead", int ofGetGlType(const ofPixels & pixels));
+OF_DEPRECATED_MSG("Use ofGetGLType() instead", int ofGetGlType(const ofShortPixels & pixels));
+OF_DEPRECATED_MSG("Use ofGetGLType() instead", int ofGetGlType(const ofFloatPixels & pixels));
 
 ofImageType ofGetImageTypeFromGLType(int glType);
 
 GLuint ofGetGLPolyMode(ofPolyRenderMode m);
-
 ofPolyRenderMode ofGetOFPolyMode(GLuint m);
 
-
 GLuint ofGetGLPrimitiveMode(ofPrimitiveMode mode);
-
 ofPrimitiveMode ofGetOFPrimitiveMode(GLuint mode);
 
 int ofGetGLInternalFormatFromPixelFormat(ofPixelFormat pixelFormat);
-int ofGetGLTypeFromPixelFormat(ofPixelFormat pixelFormat);
+int ofGetGLFormatFromPixelFormat(ofPixelFormat pixelFormat);
+int ofGetBytesPerChannelFromGLType(int glType);
 int ofGetNumChannelsFromGLFormat(int glFormat);
-void ofSetPixelStorei(int w, int bpc, int numChannels);
+void ofSetPixelStoreiAlignment(GLenum pname, int w, int bpc, int numChannels);
+void ofSetPixelStoreiAlignment(GLenum panme, int stride);
 
-vector<string> ofGLSupportedExtensions();
-bool ofGLCheckExtension(string searchName);
+std::vector<std::string> ofGLSupportedExtensions();
+bool ofGLCheckExtension(std::string searchName);
 bool ofGLSupportsNPOTTextures();
 
 bool ofIsGLProgrammableRenderer();
 
+template<class T>
+OF_DEPRECATED_MSG("Use ofGetGLFormat() instead", int ofGetGlFormat(const ofPixels_<T> & pixels));
+
+template<class T>
+int ofGetGlFormat(const ofPixels_<T> & pixels) {
+	return ofGetGLFormatFromPixelFormat(pixels.getPixelFormat());
+}
+
+template<class T>
+int ofGetGLFormat(const ofPixels_<T> & pixels) {
+    return ofGetGLFormatFromPixelFormat(pixels.getPixelFormat());
+}
+
+std::string ofGLSLVersionFromGL(int major, int minor);
+
+#ifndef TARGET_OPENGLES
+void ofEnableGLDebugLog();
+void ofDisableGLDebugLog();
+#endif
 
 #ifndef TARGET_OPENGLES
 	#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS			GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT
@@ -121,6 +103,7 @@ bool ofIsGLProgrammableRenderer();
 		#define GL_UNSIGNED_INT_24_8						GL_UNSIGNED_INT_24_8_EXT
 	#endif
 #else
+    // ES1 - check if GL_FRAMEBUFFER is defined, if not assume ES1 is running.
 	#ifndef GL_FRAMEBUFFER
 		#define GL_FRAMEBUFFER									GL_FRAMEBUFFER_OES
 		#define GL_RENDERBUFFER									GL_RENDERBUFFER_OES
@@ -146,6 +129,14 @@ bool ofIsGLProgrammableRenderer();
 		#define GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE			GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_OES
 		#define GL_DEPTH_COMPONENT16							GL_DEPTH_COMPONENT16_OES
 	#endif
+
+    // ES2 + ES3 - GL_STENCIL_INDEX has been removed from gl header, and now replaced with GL_STENCIL_INDEX8.
+    #ifndef GL_STENCIL_INDEX
+        #ifdef GL_STENCIL_INDEX8
+            #define GL_STENCIL_INDEX                        GL_STENCIL_INDEX8
+        #endif
+    #endif
+
 	#define GL_FRAMEBUFFER_INCOMPLETE_FORMATS				GL_FRAMEBUFFER_INCOMPLETE_FORMATS_OES
 	#define GL_UNSIGNED_INT_24_8							GL_UNSIGNED_INT_24_8_OES
 
@@ -155,11 +146,12 @@ bool ofIsGLProgrammableRenderer();
 	#ifdef GL_DEPTH_COMPONENT32_OES
         #define GL_DEPTH_COMPONENT32						GL_DEPTH_COMPONENT32_OES
     #endif
-    #ifdef TARGET_OF_IOS
+    #ifdef TARGET_OPENGLES
         #ifndef GL_UNSIGNED_INT
             #define GL_UNSIGNED_INT                         GL_UNSIGNED_INT_OES
         #endif
+        #ifndef GL_HALF_FLOAT
+            #define GL_HALF_FLOAT                           GL_HALF_FLOAT_OES
+        #endif
     #endif
 #endif
-
-#endif /* OFGLUTILS_H_ */

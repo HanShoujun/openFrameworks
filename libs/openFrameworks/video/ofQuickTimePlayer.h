@@ -1,8 +1,10 @@
 #pragma once
 
 #include "ofConstants.h"
-#include "ofBaseTypes.h"
+#include "ofVideoBaseTypes.h"
 #include "ofPixels.h"
+
+#if !defined(TARGET_LINUX) && (!defined(MAC_OS_X_VERSION_10_12) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12)
 
 #ifdef OF_VIDEO_PLAYER_QUICKTIME
 	#include "ofQtUtils.h"
@@ -14,37 +16,37 @@ class ofQuickTimePlayer : public ofBaseVideoPlayer{
 		ofQuickTimePlayer();
 		~ofQuickTimePlayer();
 
-		 bool			loadMovie(string name);
-		 void			closeMovie();	
+		 bool			load(string name);
+		 void			closeMovie();
 		 void			close();
 		 void			update();
 
 		 void			play();
 		 void			stop();
-		 
+
 		 void			clearMemory();
-		 
+
 		bool            setPixelFormat(ofPixelFormat pixelFormat);
-		ofPixelFormat   getPixelFormat();		 
-	
-		 bool 			isFrameNew();
-		 unsigned char * 	getPixels();
-		 ofPixelsRef		getPixelsRef();
-		 const ofPixels&	getPixelsRef() const;
-		
-		 float 			getWidth();
-		 float 			getHeight();
+		ofPixelFormat   getPixelFormat() const;
 
-		 bool			isPaused();
-		 bool			isLoaded();
-		 bool			isPlaying();		 
+		 bool 			isFrameNew() const;
 
-		 float 			getPosition();
-		 float 			getDuration();
-		 int			getTotalNumFrames();
-		 float			getSpeed();
-		 bool			getIsMovieDone();
-		 ofLoopType 	getLoopState();
+		 ofPixels&			getPixels();
+		 const ofPixels&	getPixels() const;
+
+		 float 			getWidth() const;
+		 float 			getHeight() const;
+
+		 bool			isPaused() const;
+		 bool			isLoaded() const;
+		 bool			isPlaying() const;
+
+		 float 			getPosition() const;
+		 float 			getDuration() const;
+		 int			getTotalNumFrames() const;
+		 float			getSpeed() const;
+		 bool			getIsMovieDone() const;
+		 ofLoopType 	getLoopState() const;
 
 		 void 			setPosition(float pct);
 		 void 			setVolume(float volume);
@@ -53,16 +55,16 @@ class ofQuickTimePlayer : public ofBaseVideoPlayer{
 		 void			setFrame(int frame);  // frame 0 = first frame...
 		 void 			setPaused(bool bPause);
 
-		 int			getCurrentFrame();
+		 int			getCurrentFrame() const;
 
 		 void			firstFrame();
 		 void			nextFrame();
 		 void			previousFrame();
-		 
-		bool 				bHavePixelsChanged;
-		 
-		 
-		
+
+		 mutable bool	bHavePixelsChanged;
+
+
+
 	protected:
 		void createImgMemAndGWorld();
 		void start();
@@ -82,8 +84,8 @@ class ofQuickTimePlayer : public ofBaseVideoPlayer{
 		bool 				bPlaying;
 		bool 				bPaused;
 		bool 				bIsFrameNew;			// if we are new
-		float				speed;		
-		
+		float				speed;
+
 		MovieDrawingCompleteUPP myDrawCompleteProc;
 		MovieController  	thePlayer;
 		GWorldPtr 			offscreenGWorld;
@@ -95,7 +97,4 @@ class ofQuickTimePlayer : public ofBaseVideoPlayer{
 
 #endif
 
-
-
-
-
+#endif

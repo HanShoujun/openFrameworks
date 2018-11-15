@@ -37,46 +37,46 @@
 #pragma once
 
 #import <UIKit/UIKit.h>
-#import "ofMain.h"
-#import "ofxiOS.h"
-#import "ofAppiOSWindow.h"
-#import "ofxiOSAppDelegate.h"
-#import "ofxiOSEAGLView.h"
-#import "ofxiOSKeyboard.h"
-#import "ofxiOSCoreLocation.h"
-#import "ofxiOSImagePicker.h"
-#import "ofxiOSMapKit.h"
-#include <sys/sysctl.h>
+#include <TargetConditionals.h>
 
+#include "ofxiOSConstants.h"
+#include "ofConstants.h"
 
-enum ofxiOSDeviceType {
-	ofxiOS_DEVICE_IPHONE,
-	ofxiOS_DEVICE_IPODTOUCH,
-	ofxiOS_DEVICE_IPAD,
-    ofxiOS_UNKNOWN_DEVICE
+enum ofOrientation: short;
+
+class ofTexture;
+
+template<typename T>
+class ofImage_;
+
+typedef ofImage_<unsigned char> ofImage;
+
+class ofAppiOSWindow;
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
+@class ofxiOSAppDelegate;
+@class ofxiOSViewController;
+@class ofxiOSGLKViewController;
+#elif TARGET_OS_TV
+@class ofxtvOSAppDelegate;
+@class ofxtvOSViewController;
+@class ofxtvOSGLKViewController;
+#endif
+@class ofxiOSEAGLView;
+@class ofxiOSGLKView;
+
+// this is the new way for getting device info.
+// we can add other parameters later.
+// maybe also methods for checking if device is newer or older than a certain model.
+class ofxiOSDeviceInfo{
+public:
+    ofxiOSDeviceType deviceType;
+    std::string deviceString;
+    int versionMajor;
+    int versionMinor;
 };
 
+//-------------------------------------------------------------------------------
 
-// possible return values for ofxiOSGetDeviceRevision
-#define ofxiOS_DEVICE_IPHONE_2G		"iPhone1,1"
-#define ofxiOS_DEVICE_IPHONE_3G		"iPhone1,2"
-#define ofxiOS_DEVICE_IPHONE_3GS		"iPhone2,1"
-#define ofxiOS_DEVICE_IPHONE_4		"iPhone3,1"
-
-#define ofxiOS_DEVICE_IPOD_1STGEN	"iPod1,1"
-#define ofxiOS_DEVICE_IPOD_2NDGEN	"iPod2,1"
-#define ofxiOS_DEVICE_IPOD_3RDGEN	"iPod3,1"
-#define ofxiOS_DEVICE_IPOD_4THGEN	"iPod4,1"
-
-#define ofxiOS_DEVICE_IPAD_1STGEN	"iPad1,1"
-
-
-// possible values for iPhoneSetOrientation or iPhoneGetOrientation
-#define ofxiOS_ORIENTATION_PORTRAIT          OF_ORIENTATION_DEFAULT  // UIDeviceOrientationPortrait
-#define ofxiOS_ORIENTATION_UPSIDEDOWN        OF_ORIENTATION_180      // UIDeviceOrientationPortraitUpsideDown
-#define ofxiOS_ORIENTATION_LANDSCAPE_RIGHT   OF_ORIENTATION_90_RIGHT // UIDeviceOrientationLandscapeRight
-#define ofxiOS_ORIENTATION_LANDSCAPE_LEFT    OF_ORIENTATION_90_LEFT  // UIDeviceOrientationLandscapeLeft
- 
 // whether device has audio in
 bool ofxiOSHasAudioIn();
 
@@ -84,28 +84,42 @@ bool ofxiOSHasAudioIn();
 float ofxiOSGetMicAverageLevel();
 
 // return device type
-ofxiOSDeviceType	ofxiOSGetDeviceType();
+ofxiOSDeviceType ofxiOSGetDeviceType();
 
 // return device revision
-string ofxiOSGetDeviceRevision();
+std::string ofxiOSGetDeviceRevision();
+
+// return device revision and type parsd from string
+ofxiOSDeviceInfo ofxiOSGetDeviceInfo();
 
 // return application key UIWindow
-UIWindow *ofxiOSGetUIWindow();
+UIWindow * ofxiOSGetUIWindow();
 
 // return openglview
-ofxiOSEAGLView *ofxiOSGetGLView();
+ofxiOSEAGLView * ofxiOSGetGLView();
+
+ofxiOSGLKView * ofxiOSGetGLKView();
 
 // return opengl parent view
 UIView * ofxiOSGetGLParentView();
 
 // return OpenFrameworks iPhone Window
-ofAppiOSWindow* ofxiOSGetOFWindow();
+ofAppiOSWindow * ofxiOSGetOFWindow();
 
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
 // return application delegate
-ofxiOSAppDelegate *ofxiOSGetAppDelegate();
+ofxiOSAppDelegate * ofxiOSGetAppDelegate();
 
 // return iphone view controller.
-ofxiOSViewController *ofxiOSGetViewController();
+ofxiOSViewController * ofxiOSGetViewController();
+#elif TARGET_OS_TV
+// return application delegate
+ofxtvOSAppDelegate * ofxiOSGetAppDelegate();
+
+// return iphone view controller.
+ofxtvOSViewController * ofxiOSGetViewController();
+#endif
+
 
 // brings the OpenGL view to the front of any other UIViews
 // the OpenGL view will receive touchXXXXX events, but other UIViews will not
@@ -148,20 +162,20 @@ void ofxiOSUnlockGLContext();
 // disabled by default
 void ofxiOSEnableLoopInThread();
 
-
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
 OF_DEPRECATED_MSG("ofxiOSSetOrientation is deprecated, use ofSetOrientation instead.", void ofxiOSSetOrientation(ofOrientation orientation));
 OF_DEPRECATED_MSG("ofxiOSGetOrientation is deprecated, use ofGetOrientation instead.", UIDeviceOrientation ofxiOSGetOrientation());
-
+#endif
 
 // load an image from the app bundle into a texture
 // NOTE: renamed this function to something more clearer
 // WAS: void iPhoneLoadImageFromBundle(NSString *filename, GLuint *spriteTexture);
-bool ofxiOSBundleImageToGLTexture(NSString *filename, GLuint *spriteTexture);
+bool ofxiOSBundleImageToGLTexture(NSString * filename, GLuint * spriteTexture);
 
 // load an image from UIImage into an opengl texture
 // NOTE: renamed this function to something more clearer
 // WAS: void iPhoneLoadImageFromUIImage(UIImage *uiImage, GLuint *spriteTexture);
-bool ofxiOSUIImageToGLTexture(UIImage *uiImage, GLuint *spriteTexture);
+bool ofxiOSUIImageToGLTexture(UIImage * uiImage, GLuint * spriteTexture);
 
 
 // create an ofImage out of a UIImage
@@ -169,36 +183,35 @@ bool ofxiOSUIImageToGLTexture(UIImage *uiImage, GLuint *spriteTexture);
 // targetWidth, targetHeight are target dimensions (UIImage is resized to this size and ofImage is created)
 // .... omit targetWidth & targetHeight to use original image dimensions and not resize
 // TODO: take into consideration UI image orentation
-bool ofxiOSUIImageToOFImage(UIImage *uiImage, ofImage &outImage, int targetWidth = 0, int targetHeight = 0);
+bool ofxiOSUIImageToOFImage(UIImage * uiImage, ofImage & outImage, int targetWidth = 0, int targetHeight = 0);
 
-bool ofxiOSUIImageToPixels(UIImage *uiImage, unsigned char * pix, int targetWidth = 0, int targetHeight = 0);
+bool ofxiOSUIImageToOFTexture(UIImage * uiImage, ofTexture & outTexture, int targetWidth, int targetHeight);
 
 bool ofxiOSCGImageToPixels(CGImageRef & ref, unsigned char * pixels);
 
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
 // save current opengl screen to photos app
 // based on code from http://www.bit-101.com/blog/?p=1861
 void ofxiOSScreenGrab(id delegate);
+#endif
 
 
 // utility fuctions for converting strings and NSStrings back and forth
-string ofxiOSNSStringToString(NSString * s);
-NSString * ofxiOSStringToNSString(string s);
+std::string ofxiOSNSStringToString(NSString * s);
+NSString * ofxiOSStringToNSString(std::string s);
 
 // It returns the path to the folder which your app has read/write access to.
-string ofxiOSGetDocumentsDirectory();
+std::string ofxiOSGetDocumentsDirectory();
 
 // opens url in safari.
-void ofxiOSLaunchBrowser(string url);
+void ofxiOSLaunchBrowser(std::string url);
 
-void ofxiOSSetClipboardString(string clipboardString);
-string ofxiOSGetClipboardString();
+void ofxiOSSetClipboardString(std::string clipboardString);
+std::string ofxiOSGetClipboardString();
 
-//-------------------------------------------------------------------------------
-// backwards compatibility
-//
-
+// backwards compatibility < 0.8.0
 #define ofxiPhoneHasAudioIn ofxiOSHasAudioIn
-#define ofxiPhoneGetMicAverageLevel  ofxiOSGetMicAverageLevel
+#define ofxiPhoneGetMicAverageLevel ofxiOSGetMicAverageLevel
 #define ofxiPhoneGetDeviceType ofxiOSGetDeviceType
 #define ofxiPhoneGetDeviceRevision ofxiOSGetDeviceRevision
 #define ofxiPhoneGetUIWindow ofxiOSGetUIWindow
@@ -228,4 +241,3 @@ string ofxiOSGetClipboardString();
 #define ofxiPhoneLaunchBrowser ofxiOSLaunchBrowser
 #define ofxNSStringToString ofxiOSNSStringToString
 #define ofxStringToNSString ofxiOSStringToNSString
-

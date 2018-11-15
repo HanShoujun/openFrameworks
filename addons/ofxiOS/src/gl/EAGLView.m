@@ -32,6 +32,8 @@
 
 #import <QuartzCore/QuartzCore.h>
 
+#include <TargetConditionals.h>
+
 #import "EAGLView.h"
 
 #import "ES1Renderer.h"
@@ -52,81 +54,100 @@
 
 // You must implement this method
 + (Class) layerClass {
-	return [CAEAGLLayer class];
+    return [CAEAGLLayer class];
 }
 
-- (id) initWithFrame:(CGRect)frame
- andPreferedRenderer:(ESRendererVersion)version
-            andDepth:(bool)depth
-               andAA:(bool)fsaaEnabled
-       andNumSamples:(int)samples
-           andRetina:(bool)retinaEnabled{
+- (id)initWithFrame:(CGRect)frame
+andPreferedRenderer:(ESRendererVersion)version
+           andDepth:(bool)depth
+              andAA:(bool)msaaEnabled
+      andNumSamples:(int)samples
+          andRetina:(bool)retinaEnabled
+     andRetinaScale:(CGFloat)retinaScale
+         sharegroup:(EAGLSharegroup*)sharegroup {
 
-	if((self = [super initWithFrame:frame])) {
+    if((self = [super initWithFrame:frame])) {
         
         rendererVersion = version;
         bUseDepth = depth;
-        bUseFSAA = fsaaEnabled;
+        bUseMSAA = msaaEnabled;
         bUseRetina = retinaEnabled;
-        fsaaSamples = samples;
+        msaaSamples = samples;
 
-        CAEAGLLayer *eaglLayer = (CAEAGLLayer *)super.layer;
-		
+        //------------------------------------------------------
+        CAEAGLLayer * eaglLayer = (CAEAGLLayer *)super.layer;
         eaglLayer.opaque = true;
-		eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
-										[NSNumber numberWithBool:YES], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
-		
-		scaleFactor = 1;
-		if(bUseRetina){
-			if([[UIScreen mainScreen] respondsToSelector:@selector(scale)]){
-				if ([[UIScreen mainScreen] scale] > 1){
-					[self setContentScaleFactor:[[UIScreen mainScreen] scale]];
-					scaleFactor = [[UIScreen mainScreen] scale];
-				} else {
-                    bUseRetina = false;
+        eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
+                                        [NSNumber numberWithBool:YES], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
+        
+        //------------------------------------------------------
+        scaleFactorPref = retinaScale;
+        
+        if(bUseRetina == YES) {
+            if(scaleFactorPref == 0.0) {
+                scaleFactorPref = [[UIScreen mainScreen] nativeScale]; // no scale preference, default to max scale.
+            } else {
+                if(scaleFactorPref < 1.0) {
+                    scaleFactorPref = 1.0; // invalid negative value, default scale to 1.
+                } else if(scaleFactorPref > [[UIScreen mainScreen] nativeScale]) {
+                    scaleFactorPref = [[UIScreen mainScreen] nativeScale];
                 }
-			} else {
-                bUseRetina = false;
             }
-		}
-		
+        } else {
+            scaleFactorPref = 1.0;
+        }
+        
+        [self updateScaleFactor];
+        
+        //------------------------------------------------------
+        if(rendererVersion == ESRendererVersion_30) {
+            NSLog(@"OpenGLES 3.0 Renderer not implemented for oF. Defaulting to OpenGLES 2.0");
+            rendererVersion = ESRendererVersion_20;
+        }
+        
         if(rendererVersion == ESRendererVersion_20) {
             renderer = [[ES2Renderer alloc] initWithDepth:bUseDepth
-                                                    andAA:bUseFSAA
-                                           andFSAASamples:fsaaSamples
-                                                andRetina:bUseRetina];
+                                                    andAA:bUseMSAA
+                                           andMSAASamples:msaaSamples
+                                                andRetina:bUseRetina
+                                               sharegroup:sharegroup];
         }
-		
-        if(!renderer){
-            renderer = [[ES1Renderer alloc] initWithDepth:bUseDepth 
-                                                    andAA:bUseFSAA 
-                                           andFSAASamples:fsaaSamples 
-                                                andRetina:bUseRetina];
-			
-            if(!renderer){
-				[self release];
-				return nil;
-			}
-            
-            rendererVersion = ESRendererVersion_11;
-        }
-		
-		self.multipleTouchEnabled = true;
-		self.opaque = true;
         
-		animating = NO;
-		displayLinkSupported = NO;
-		animationFrameInterval = 1;
-		displayLink = nil;
-		animationTimer = nil;
+        if(!renderer){ // if OpenGLES 2.0 fails to load try OpenGLES 1.1
+            rendererVersion = ESRendererVersion_11;
+            renderer = [[ES1Renderer alloc] initWithDepth:bUseDepth 
+                                                    andAA:bUseMSAA 
+                                           andMSAASamples:msaaSamples 
+                                                andRetina:bUseRetina
+                                               sharegroup:sharegroup];
+            
+            if(!renderer){
+                NSLog(@"Critical Error - ofiOS EAGLView.m could not start any type of OpenGLES renderer");
+                [self release];
+                return nil;
+            }
+            
+            
+        }
+
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
+        self.multipleTouchEnabled = true;
+#endif
+        self.opaque = true;
+        
+        animating = NO;
+        displayLinkSupported = NO;
+        animationFrameInterval = 1;
+        displayLink = nil;
+        animationTimer = nil;
         
         glLock = [[NSLock alloc] init];
-		
-		// A system version of 3.1 or greater is required to use CADisplayLink. The NSTimer
-		// class is used as fallback when it isn't available.
-		NSString *reqSysVer = @"3.1";
-		NSString *currSysVer = [[UIDevice currentDevice] systemVersion];
-		if([currSysVer compare:reqSysVer options:NSNumericSearch] != NSOrderedAscending) {
+        
+        // A system version of 3.1 or greater is required to use CADisplayLink. The NSTimer
+        // class is used as fallback when it isn't available.
+        NSString *reqSysVer = @"3.1";
+        NSString *currSysVer = [[UIDevice currentDevice] systemVersion];
+        if([currSysVer compare:reqSysVer options:NSNumericSearch] != NSOrderedAscending) {
             /**
              *  enabling display link support doesn't play nice with UIKit interaction.
              *  gl framerate runs at full 60 fps but touch events slow down considerably.
@@ -134,20 +155,19 @@
              *  http://stackoverflow.com/questions/5944050/cadisplaylink-opengl-rendering-breaks-uiscrollview-behaviour/5956119#5956119
              *  for now, displayLinkSupported is disabled.
              */
-//			displayLinkSupported = YES;
+//          displayLinkSupported = YES;
         }
         
         bInit = YES;
-	}
-	
-	return self;
+    }
+    
+    return self;
 }
 
 - (void) destroy {
     if(!bInit) {
         return;
     }
-
     [self stopAnimation];
     [renderer release];
     [glLock release];
@@ -157,7 +177,7 @@
 
 - (void) dealloc{
     [self destroy];
-	[super dealloc];
+    [super dealloc];
 }
 
 - (void) drawView:(id)sender {
@@ -171,35 +191,13 @@
 - (void)startRender {
     [renderer startRender];
 }
-	
+    
 - (void)finishRender {
     [renderer finishRender];
 }
-	
-- (void)layoutSubviews{
-    UIScreen * currentScreen = self.window.screen;
-    if(!currentScreen){
-        currentScreen = [UIScreen mainScreen];
-    }
     
-    if(bUseRetina){
-        if([currentScreen respondsToSelector:@selector(scale)]){
-            if(scaleFactor != [currentScreen scale]){
-                scaleFactor = [currentScreen scale];
-                [self setContentScaleFactor:scaleFactor];
-            }
-        } else {
-            if(scaleFactor != 1){
-                scaleFactor = 1;
-                [self setContentScaleFactor:scaleFactor];
-            }
-        }
-    } else {
-        if(scaleFactor != 1){
-            scaleFactor = 1;
-            [self setContentScaleFactor:scaleFactor];
-        }
-    }
+- (void)layoutSubviews{
+    [self updateScaleFactor];
 
     [renderer startRender];
     [renderer resizeFromLayer:(CAEAGLLayer*)self.layer];
@@ -208,40 +206,57 @@
     [self notifyResized];
 }
 
+//-------------------------------------------------------------------
+- (void)updateScaleFactor {
+    UIScreen * currentScreen = self.window.screen;
+    if(currentScreen == nil) {
+        currentScreen = [UIScreen mainScreen];
+    }
+
+    if([currentScreen respondsToSelector:@selector(scale)] == NO) {
+        return;
+    }
+    
+    scaleFactor = MIN(scaleFactorPref, [currentScreen scale]);
+    
+    if(scaleFactor != self.contentScaleFactor) {
+        self.contentScaleFactor = scaleFactor;
+    }
+}
 
 //------------------------------------------------------------------- lock/unlock GL context.
 - (void)lockGL {
-	[glLock lock];
+    [glLock lock];
 }
 
 - (void)unlockGL {
-	[glLock unlock];
+    [glLock unlock];
 }
 
 //------------------------------------------------------------------- animation timer.
 - (float) animationFrameInterval {
-	return animationFrameInterval;
+    return animationFrameInterval;
 }
 
 - (void) setAnimationFrameInterval:(float)frameInterval {
-	// Frame interval defines how many display frames must pass between each time the
-	// display link fires. The display link will only fire 30 times a second when the
-	// frame internal is two on a display that refreshes 60 times a second. The default
-	// frame interval setting of one will fire 60 times a second when the display refreshes
-	// at 60 times a second. A frame interval setting of less than one results in undefined
-	// behavior.
-	if(frameInterval >= 1) {
-		animationFrameInterval = frameInterval;
-		
-		if(animating) {
-			[self stopAnimation];
-			[self startAnimation];
-		}
-	}
+    // Frame interval defines how many display frames must pass between each time the
+    // display link fires. The display link will only fire 30 times a second when the
+    // frame internal is two on a display that refreshes 60 times a second. The default
+    // frame interval setting of one will fire 60 times a second when the display refreshes
+    // at 60 times a second. A frame interval setting of less than one results in undefined
+    // behavior.
+    if(frameInterval >= 1) {
+        animationFrameInterval = frameInterval;
+        
+        if(animating) {
+            [self stopAnimation];
+            [self startAnimation];
+        }
+    }
 }
 
 - (void)setAnimationFrameRate:(float)rate {
-	if(rate > 0) {
+    if(rate > 0) {
         [self setAnimationFrameInterval:60.0/rate];
         [self startAnimation];
     } else {
@@ -250,48 +265,50 @@
 }
 
 - (void) startAnimation {
-	if(!animating) {
-		if(displayLinkSupported) {
-			// CADisplayLink is API new to iPhone SDK 3.1. Compiling against earlier versions will result in a warning, but can be dismissed
-			// if the system version runtime check for CADisplayLink exists in -initWithCoder:. The runtime check ensures this code will
-			// not be called in system versions earlier than 3.1.
-			
-			displayLink = [NSClassFromString(@"CADisplayLink") displayLinkWithTarget:self selector:@selector(drawView:)];
-			[displayLink setFrameInterval:animationFrameInterval];
-			[displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-		} else {
-			animationTimer = [NSTimer scheduledTimerWithTimeInterval:(NSTimeInterval)((1.0 / 60.0) * animationFrameInterval) 
+    if(!animating) {
+        if(displayLinkSupported) {
+            // CADisplayLink is API new to iPhone SDK 3.1. Compiling against earlier versions will result in a warning, but can be dismissed
+            // if the system version runtime check for CADisplayLink exists in -initWithCoder:. The runtime check ensures this code will
+            // not be called in system versions earlier than 3.1.
+            
+            displayLink = [NSClassFromString(@"CADisplayLink") displayLinkWithTarget:self selector:@selector(drawView:)];
+            [displayLink setFrameInterval:animationFrameInterval];
+            [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        } else {
+            animationTimer = [NSTimer scheduledTimerWithTimeInterval:(NSTimeInterval)((1.0 / 60.0) * animationFrameInterval) 
                                                               target:self 
                                                             selector:@selector(drawView:) 
                                                             userInfo:nil 
                                                              repeats:TRUE];
         }
-		
-		animating = YES;
+        
+        animating = YES;
         
         [self notifyAnimationStarted];
-	}
+    }
+    
+    [self drawView:self];
 }
 
 - (void)stopAnimation {
-	if(animating) {
-		if (displayLinkSupported) {
-			[displayLink invalidate];
-			displayLink = nil;
-		} else {
-			[animationTimer invalidate];
-			animationTimer = nil;
-		}
-		
-		animating = NO;
+    if(animating) {
+        if (displayLinkSupported) {
+            [displayLink invalidate];
+            displayLink = nil;
+        } else {
+            [animationTimer invalidate];
+            animationTimer = nil;
+        }
+        
+        animating = NO;
         
         [self notifyAnimationStopped];
-	}
+    }
 }
 
 //------------------------------------------------------------------- getters.
 -(EAGLContext*) context{
-	return [renderer context];
+    return [renderer context];
 }
 
 - (GLint)getWidth {

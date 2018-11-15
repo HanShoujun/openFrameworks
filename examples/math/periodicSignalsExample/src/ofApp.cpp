@@ -52,6 +52,11 @@ void ofApp::update(){
 	x = int(t*speed.getValue())%(ofGetWidth()-rightMargin);
 	y[1] = 60*3+ofNoise(t*freq.getValue())*yFactor.getValue();
 	y[2] = 60*4+ofSignedNoise(t*freq.getValue())*yFactor.getValue();
+    
+    float test = 60*4+ofSignedNoise(t*freq.getValue())*yFactor.getValue();
+    
+    cout<< test << endl;
+    
 	y[3] = 60*5+ofRandom(-1,1)*yFactor.getValue(); // random can't be dependent on time or frequency
 	y[4] = 60*6+sin(t*freq.getValue()*TWO_PI)*yFactor.getValue();
 	y[5] = 60*7+(sin(t*freq.getValue()*TWO_PI)+1)*.5*yFactor.getValue();
@@ -77,7 +82,7 @@ void ofApp::draw(){
 
 	ofSetColor(170);
 	for(int i=0;i<(ofGetWidth()-rightMargin)/speed.getValue();i++){
-		ofLine(i*speed.getValue(),120,i*speed.getValue(),ofGetHeight());
+		ofDrawLine(i*speed.getValue(),120,i*speed.getValue(),ofGetHeight());
 		if(showPos)
 			ofDrawBitmapString(ofToString(i)+"s",i*speed.getValue(),ofGetHeight()-20);
 		else
@@ -85,19 +90,19 @@ void ofApp::draw(){
 	}
 
 	ofSetColor(20);
-	ofLine(ofGetWidth()-rightMargin,0,ofGetWidth()-rightMargin,ofGetHeight());
+	ofDrawLine(ofGetWidth()-rightMargin,0,ofGetWidth()-rightMargin,ofGetHeight());
 
 	for(int i=0;i<(int)trail.size();i++){
 		ofEnableSmoothing();
-		ofCircle(x,y[i],radius);
+		ofDrawCircle(x,y[i],radius);
 		trail[i].draw();
 
 
 		ofDisableSmoothing();
-		ofLine(0,60*(i+2),ofGetWidth(),60*(i+2));
+		ofDrawLine(0,60*(i+2),ofGetWidth(),60*(i+2));
 
 		float rectY = 60*(i+2);
-		ofRect(ofGetWidth()-rightMargin+10,rectY,10,y[i]-rectY);
+		ofDrawRectangle(ofGetWidth()-rightMargin+10,rectY,10,y[i]-rectY);
 	}
 
 	ofDrawBitmapString("constant",ofGetWidth()-160,60*2-4);
@@ -149,6 +154,16 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
 
 }
 

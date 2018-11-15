@@ -2,6 +2,11 @@
 
 #include "ofxUDPManager.h"
 #include "ofxNetworkUtils.h"
+#include "ofxNetwork.h"
+#include "ofLog.h"
+#include "ofUtils.h"
+
+using namespace std;
 
 //--------------------------------------------------------------------------------
 bool ofxUDPManager::m_bWinsockInit= false;
@@ -21,8 +26,8 @@ ofxUDPManager::ofxUDPManager()
 	#endif
 
 	m_hSocket= INVALID_SOCKET;
-	m_dwTimeoutReceive=	OF_UDP_DEFAULT_TIMEOUT;
-	m_iListenPort= -1;
+	m_dwTimeoutReceive = OF_UDP_DEFAULT_TIMEOUT;
+    m_dwTimeoutSend = OF_UDP_DEFAULT_TIMEOUT;
 
 	canGetRemoteAddress	= false;
 	nonBlocking			= true;
@@ -52,6 +57,47 @@ bool ofxUDPManager::Close()
 }
 
 //--------------------------------------------------------------------------------
+bool ofxUDPManager::Setup(const ofxUDPSettings & settings)
+{
+	if (!settings.bindPort && !settings.sendPort) {
+		ofLogError("ofxUDPManager") << "passed settings object was not initialized with .receiveOn or .sendTo";
+		return false;
+	}
+
+	if (!Create()) {
+		return false;
+	}
+
+	// TODO: check each return value, destroy socket and return false ?
+	SetReuseAddress(settings.reuse);
+	SetEnableBroadcast(settings.broadcast);
+	SetNonBlocking(!settings.blocking);
+
+	SetTimeoutSend(settings.sendTimeout);
+	SetTimeoutReceive(settings.receiveTimeout);
+
+	if (settings.receiveBufferSize) SetReceiveBufferSize(settings.receiveBufferSize);
+	if (settings.sendBufferSize) SetSendBufferSize(settings.sendBufferSize);
+	SetTTL(settings.ttl);
+
+	if (settings.bindPort) {
+		if (settings.multicast) {
+			return BindMcast((char*)settings.bindAddress.c_str(), settings.bindPort);
+		} else {
+			return Bind(settings.bindPort);
+		}
+	}
+	if (settings.sendPort) {
+		if (settings.multicast) {
+			return ConnectMcast((char*)settings.sendAddress.c_str(), settings.sendPort);
+		} else {
+			return Connect((char*)settings.sendAddress.c_str(), settings.sendPort);
+		}
+	}
+	return true;
+}
+
+//--------------------------------------------------------------------------------
 bool ofxUDPManager::Create()
 {
 	if (m_hSocket != INVALID_SOCKET)
@@ -61,14 +107,57 @@ bool ofxUDPManager::Create()
 	{
 		int unused = true;
 		setsockopt(m_hSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&unused, sizeof(unused));
+		#ifdef __APPLE__   // MacOS/X requires an additional call
+			setsockopt(m_hSocket, SOL_SOCKET, SO_REUSEPORT, (char*)&unused, sizeof(unused));
+		#endif
 	}
 	bool ret = m_hSocket !=	INVALID_SOCKET;
 	if(!ret) ofxNetworkCheckError();
 	return ret;
 }
 
+
 //--------------------------------------------------------------------------------
-///Theo added - Choose to set nonBLocking - default mode is to block
+int ofxUDPManager::WaitReceive(time_t timeoutSeconds, time_t timeoutMicros){
+	if (m_hSocket == INVALID_SOCKET) return SOCKET_ERROR;
+
+	fd_set fd;
+	FD_ZERO(&fd);
+	FD_SET(m_hSocket, &fd);
+	timeval	tv;
+	tv.tv_sec = timeoutSeconds;
+	tv.tv_usec = timeoutMicros;
+	auto ret = select(m_hSocket+1,&fd,NULL,NULL,&tv);
+	if(ret == 0){
+		return SOCKET_TIMEOUT;
+	}else if(ret < 0){
+		return SOCKET_ERROR;
+	}else{
+		return 0;
+	}
+}
+
+//--------------------------------------------------------------------------------
+int ofxUDPManager::WaitSend(time_t timeoutSeconds, time_t timeoutMicros){
+	if (m_hSocket == INVALID_SOCKET) return SOCKET_ERROR;
+
+	fd_set fd;
+	FD_ZERO(&fd);
+	FD_SET(m_hSocket, &fd);
+	timeval	tv;
+	tv.tv_sec = timeoutSeconds;
+	tv.tv_usec = timeoutMicros;
+	auto ret = select(m_hSocket+1,NULL,&fd,NULL,&tv);
+	if(ret == 0){
+		return SOCKET_TIMEOUT;
+	}else if(ret < 0){
+		return SOCKET_ERROR;
+	}else{
+		return 0;
+	}
+}
+
+//--------------------------------------------------------------------------------
 bool ofxUDPManager::SetNonBlocking(bool useNonBlocking)
 {
 	nonBlocking		= useNonBlocking;
@@ -94,7 +183,7 @@ bool ofxUDPManager::Bind(unsigned short usPort)
 	//Port MUST	be in Network Byte Order
 	saServer.sin_port =	htons(usPort);
 	int ret = ::bind(m_hSocket,(struct sockaddr*)&saServer,sizeof(struct sockaddr));
-	if(ret == -1) ofxNetworkCheckError();
+	if(ret == SOCKET_ERROR) ofxNetworkCheckError();
 
 	return (ret == 0);
 }
@@ -133,6 +222,7 @@ bool ofxUDPManager::Connect(const char *pHost, unsigned short usPort)
 
 	if (m_hSocket == INVALID_SOCKET) return(false);
 
+#include "ofUtils.h"
 	if ((he	= gethostbyname(pHost))	== NULL)
 		return(false);
 
@@ -158,7 +248,8 @@ bool ofxUDPManager::ConnectMcast(char* pMcast, unsigned short usPort)
 	if (!Bind(usPort))
 	{
 #ifdef _DEBUG
-		ofLogError("ofxUDPManager") << "ConnectMcast(): couldn't bind to " << usPort<< ", err " << WSAGetLastError();
+		ofLogError("ofxUDPManager") << "ConnectMcast(): couldn't bind to " << usPort;
+		ofxNetworkCheckError();
 #endif
 		return false;
 	}
@@ -167,14 +258,16 @@ bool ofxUDPManager::ConnectMcast(char* pMcast, unsigned short usPort)
 	if (!SetTTL(1))
 	{
 #ifdef _DEBUG
-		ofLogWarning("ofxUDPManager") << "ConnectMcast(): couldn't set TTL: err " << WSAGetLastError() << ", contining anyway";
+		ofLogWarning("ofxUDPManager") << "ConnectMcast(): couldn't set TTL; continuing anyway"; 
+		ofxNetworkCheckError();
 #endif
 	}
 
 	if (!Connect(pMcast, usPort))
 	{
 #ifdef _DEBUG
-		ofLogError("ofxUDPManager") << " ConnectMcast(): couldn't connect to socket: err " << WSAGetLastError();
+		ofLogError("ofxUDPManager") << " ConnectMcast(): couldn't connect to socket";
+		ofxNetworkCheckError();
 #endif
 		return false;
 	}
@@ -191,17 +284,12 @@ int	ofxUDPManager::Send(const char* pBuff,	const int iSize)
 {
 	if (m_hSocket == INVALID_SOCKET) return(SOCKET_ERROR);
 
-	/*if (m_dwTimeoutSend	!= NO_TIMEOUT)
-	{
-		fd_set fd;
-		FD_ZERO(&fd);
-		FD_SET(m_hSocket, &fd);
-		timeval	tv=	{m_dwTimeoutSend, 0};
-		if(select(m_hSocket+1,NULL,&fd,NULL,&tv)== 0)
-		{
-			return(SOCKET_TIMEOUT);
+	if (m_dwTimeoutSend	!= NO_TIMEOUT){
+		auto ret = WaitSend(m_dwTimeoutSend,0);
+		if(ret!=0){
+			return ret;
 		}
-	}*/
+	}
 
 	int ret = sendto(m_hSocket, (char*)pBuff,	iSize, 0, (sockaddr *)&saClient, sizeof(sockaddr));
 	if(ret==-1) ofxNetworkCheckError();
@@ -217,39 +305,79 @@ int	ofxUDPManager::SendAll(const char*	pBuff, const int iSize)
 {
 	if (m_hSocket == INVALID_SOCKET) return(SOCKET_ERROR);
 
-	if (m_dwTimeoutSend	!= NO_TIMEOUT)
-	{
-		fd_set fd;
-		FD_ZERO(&fd);
-		FD_SET(m_hSocket, &fd);
-		timeval	tv=	{m_dwTimeoutSend, 0};
-		if(select(m_hSocket+1,NULL,&fd,NULL,&tv)== 0)
-		{
-			ofxNetworkCheckError();
-			return(SOCKET_TIMEOUT);
+	auto timestamp = ofGetElapsedTimeMicros();
+	auto timeleftSecs = m_dwTimeoutSend;
+	auto timeleftMicros = 0;
+	int total= 0;
+	int bytesleft = iSize;
+	int ret=-1;
+
+	while (total < iSize) {
+		if (m_dwTimeoutSend	!= NO_TIMEOUT){
+			auto ret = WaitSend(timeleftSecs,timeleftMicros);
+			if(ret!=0){
+				return ret;
+			}
+		}
+		ret = sendto(m_hSocket, (char*)pBuff,	iSize, 0, (sockaddr *)&saClient, sizeof(sockaddr));
+		if (ret == SOCKET_ERROR) {
+			return SOCKET_ERROR;
+		}
+		total += ret;
+		bytesleft -=ret;
+		if (m_dwTimeoutSend	!= NO_TIMEOUT){
+			auto now = ofGetElapsedTimeMicros();
+			auto diff = now - timestamp;
+			if (diff > m_dwTimeoutSend * 1000000){
+				return SOCKET_TIMEOUT;
+			}
+			float timeFloat = m_dwTimeoutSend - diff/1000000.;
+			timeleftSecs = timeFloat;
+			timeleftMicros = (timeFloat - timeleftSecs) * 1000000;
 		}
 	}
 
-
-	int	total= 0;
-	int	bytesleft =	iSize;
-	int	n=0;
-
-	while (total < iSize)
-	{
-		n =	sendto(m_hSocket, (char*)pBuff,	iSize, 0, (sockaddr *)&saClient, sizeof(sockaddr));
-		if (n == -1)
-			{
-				ofxNetworkCheckError();
-				break;
-			}
-		total += n;
-		bytesleft -=n;
-	}
-
-	return n==-1?SOCKET_ERROR:total;
+	return total;
 }
 
+
+//--------------------------------------------------------------------------------
+//	returns number of bytes wiating or SOCKET_ERROR if error
+int	ofxUDPManager::PeekReceive()
+{
+	if (m_hSocket == INVALID_SOCKET){
+		ofLogError("INVALID_SOCKET");
+		return SOCKET_ERROR;
+	}
+
+	if (m_dwTimeoutReceive	!= NO_TIMEOUT){
+		auto ret = WaitReceive(m_dwTimeoutReceive,0);
+		if(ret!=0){
+			return ret;
+		}
+	}
+
+	//	we can use MSG_PEEK, but we still need a large buffer (udp protocol max is 64kb even if max for this socket is less)
+	//	don't want a 64kb stack item here, so instead read how much can be read (note: not queue size, there may be more data-more packets)
+	#ifdef TARGET_WIN32
+			unsigned long size = 0;
+			int retVal = ioctlsocket(m_hSocket,FIONREAD,&size);
+	#else
+			int size  = 0;
+			int retVal = ioctl(m_hSocket,FIONREAD,&size);
+	#endif
+	
+	//	error
+	if ( retVal != 0 )
+	{
+		//assert( Result == SOCKET_ERROR );
+		//	report error
+		ofxNetworkCheckError();
+		return SOCKET_ERROR;
+	}
+
+	return size;
+}
 
 
 //--------------------------------------------------------------------------------
@@ -264,17 +392,12 @@ int	ofxUDPManager::Receive(char* pBuff, const int iSize)
 
 	}
 
-	/*if (m_dwTimeoutSend	!= NO_TIMEOUT)
-	{
-		fd_set fd;
-		FD_ZERO(&fd);
-		FD_SET(m_hSocket, &fd);
-		timeval	tv=	{m_dwTimeoutSend, 0};
-		if(select(m_hSocket+1,&fd,NULL,NULL,&tv)== 0)
-		{
-			return(SOCKET_TIMEOUT);
+	if (m_dwTimeoutReceive	!= NO_TIMEOUT){
+		auto ret = WaitReceive(m_dwTimeoutReceive,0);
+		if(ret!=0){
+			return ret;
 		}
-	}*/
+	}
 
 	#ifndef TARGET_WIN32
 		socklen_t nLen= sizeof(sockaddr);
@@ -294,9 +417,12 @@ int	ofxUDPManager::Receive(char* pBuff, const int iSize)
 	}
 	else
 	{
-		ofxNetworkCheckError();
-		//ofLogNotice("ofxUDPManager") << "received from: ????";
-		canGetRemoteAddress= false;
+		canGetRemoteAddress = false;
+
+		//	if the network error is WOULDBLOCK, then return 0 instead of SOCKET_ERROR as it's not really a problem, just no data.
+		int SocketError = ofxNetworkCheckError();
+		if ( SocketError == OFXNETWORK_ERROR(WOULDBLOCK) )
+			return 0;
 	}
 
 	return ret;
@@ -321,12 +447,33 @@ int	ofxUDPManager::GetTimeoutReceive()
 }
 
 //--------------------------------------------------------------------------------
-bool ofxUDPManager::GetRemoteAddr(char* address)
+bool ofxUDPManager::GetRemoteAddr(string& address,int& port) const
 {
 	if (m_hSocket == INVALID_SOCKET) return(false);
 	if ( canGetRemoteAddress ==	false) return (false);
 
-	strcpy(address,	inet_ntoa((in_addr)saClient.sin_addr));
+	//	get the static-winsock-allocated address-conversion string and make a copy of it
+	const char* AddressStr = inet_ntoa((in_addr)saClient.sin_addr);
+	address = AddressStr;
+
+	//	get the port
+	port = ntohs(saClient.sin_port);
+
+	return true;
+}
+
+//--------------------------------------------------------------------------------
+bool ofxUDPManager::GetListenAddr(string& address,int& port) const
+{
+	if (m_hSocket == INVALID_SOCKET) return(false);
+
+	//	get the static-winsock-allocated address-conversion string and make a copy of it
+	const char* AddressStr = inet_ntoa((in_addr)saServer.sin_addr);
+	address = AddressStr;
+
+	//	get the port
+	port = ntohs(saServer.sin_port);
+
 	return true;
 }
 
@@ -459,7 +606,7 @@ int ofxUDPManager::GetTTL()
 	if (getsockopt(m_hSocket, IPPROTO_IP, IP_MULTICAST_TTL, (char FAR *) &nTTL, &nSize) == SOCKET_ERROR)
 	{
 #ifdef _DEBUG
-		ofLogError("ofxUDPManager") << "GetTTL(): getsockopt failed: err " << WSAGetLastError();
+		ofLogError("ofxUDPManager") << "GetTTL(): getsockopt failed";
 #endif
 		ofxNetworkCheckError();
 		return -1;
@@ -477,7 +624,7 @@ bool ofxUDPManager::SetTTL(int nTTL)
 	if (setsockopt(m_hSocket, IPPROTO_IP, IP_MULTICAST_TTL, (char FAR *)&nTTL, sizeof (int)) == SOCKET_ERROR)
 	{
 #ifdef _DEBUG
-		ofLogError("ofxUDPManager") << "SetTTL(): setsockopt failed: err " << WSAGetLastError();
+		ofLogError("ofxUDPManager") << "SetTTL(): setsockopt failed";
 #endif
 		ofxNetworkCheckError();
 		return false;

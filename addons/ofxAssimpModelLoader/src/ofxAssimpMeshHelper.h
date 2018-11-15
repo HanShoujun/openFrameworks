@@ -5,28 +5,34 @@
 
 #pragma once
 
-#include "ofMain.h"
-#include "assimp.h"
+#include "ofConstants.h"
+#include "ofMaterial.h"
+#include "ofGraphics.h"
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include "ofxAssimpTexture.h"
+#include "ofVbo.h"
+#include "ofMesh.h"
+#include "ofMatrix4x4.h"
 
-class aiMesh;
+struct aiMesh;
 
 class ofxAssimpMeshHelper {
 
 public:
 
 	ofxAssimpMeshHelper();
-    ~ofxAssimpMeshHelper();
     
     bool hasTexture();
-    ofTexture * getTexturePtr();
+    ofTexture & getTextureRef();
     
     aiMesh * mesh; // pointer to the aiMesh we represent.
 
     ofVbo vbo;
     
-    ofxAssimpTexture * assimpTexture;
-    vector<ofIndexType> indices;
+    ofxAssimpTexture assimpTexture;
+	std::vector<ofIndexType> indices;
     
     ofMaterial material;
     
@@ -35,8 +41,8 @@ public:
     bool twoSided;
     bool hasChanged;
 
-    vector<aiVector3D> animatedPos;
-    vector<aiVector3D> animatedNorm;
+	std::vector<aiVector3D> animatedPos;
+	std::vector<aiVector3D> animatedNorm;
 
     ofMesh cachedMesh;
     bool validCache;

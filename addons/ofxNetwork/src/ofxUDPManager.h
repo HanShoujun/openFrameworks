@@ -63,6 +63,7 @@ x) Close()
 
 --------------------------------------------------------------------------------*/
 #include "ofConstants.h"
+#include "ofxUDPSettings.h"
 #include <string.h>
 #include <wchar.h>
 #include <stdio.h>
@@ -102,8 +103,6 @@ x) Close()
 
 /// Socket constants.
 #define SOCKET_TIMEOUT			SOCKET_ERROR - 1
-#define NO_TIMEOUT				0xFFFF
-#define OF_UDP_DEFAULT_TIMEOUT   NO_TIMEOUT
 
 //--------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------
@@ -119,10 +118,12 @@ public:
 	//destructor
 	virtual ~ofxUDPManager()
 	{
-		if ((m_hSocket)&&(m_hSocket != INVALID_SOCKET)) Close();
+		if (HasSocket()) Close();
 	}
 
+	bool	HasSocket() const	{	return (m_hSocket)&&(m_hSocket != INVALID_SOCKET);	}
 	bool Close();
+	bool Setup(const ofxUDPSettings & settings);
 	bool Create();
 	bool Connect(const char *pHost, unsigned short usPort);
 	bool ConnectMcast(char *pMcast, unsigned short usPort);
@@ -131,12 +132,14 @@ public:
 	int  Send(const char* pBuff, const int iSize);
 	//all data will be sent guaranteed.
 	int  SendAll(const char* pBuff, const int iSize);
+	int  PeekReceive();			//	return number of bytes waiting
 	int  Receive(char* pBuff, const int iSize);
 	void SetTimeoutSend(int timeoutInSeconds);
 	void SetTimeoutReceive(int timeoutInSeconds);
 	int  GetTimeoutSend();
 	int  GetTimeoutReceive();
-	bool GetRemoteAddr(char* address);							//returns the IP of last received packet
+	bool GetRemoteAddr(std::string& address,int& port) const;	//	gets the IP and port of last received packet
+	bool GetListenAddr(std::string& address,int& port) const;	//	get our bound IP and port
 	bool SetReceiveBufferSize(int sizeInByte);
 	bool SetSendBufferSize(int sizeInByte);
 	int  GetReceiveBufferSize();
@@ -150,14 +153,14 @@ public:
 	bool SetTTL(int nTTL);
 
 protected:
-	int m_iListenPort;
-
 	#ifdef TARGET_WIN32
 		SOCKET m_hSocket;
 	#else
 		int m_hSocket;
 	#endif
 
+	int WaitReceive(time_t timeoutSeconds, time_t timeoutMillis);
+	int WaitSend(time_t timeoutSeconds, time_t timeoutMillis);
 
 	unsigned long m_dwTimeoutReceive;
 	unsigned long m_dwTimeoutSend;

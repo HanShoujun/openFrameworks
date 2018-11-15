@@ -30,20 +30,21 @@
 
 #pragma once
 
-#include <Availability.h>
-#ifdef __IPHONE_3_0
+#include <TargetConditionals.h>
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
 
-
-#include "ofMain.h"
-#include <MapKit/MapKit.h>
+#import <MapKit/MapKit.h>
+#include "ofConstants.h"
 #include "ofxiOSMapKitListener.h"
+#include "glm/vec2.hpp"
+#include "ofRectangle.h"
 #include <list>
 
 // these are the types you can set for the map
 enum ofxiOSMapKitType {
-	ofxiOS_MAPKIT_MAP		= MKMapTypeStandard,
-	ofxiOS_MAPKIT_SATELLITE	= MKMapTypeSatellite,
-	ofxiOS_MAPKIT_HYRBID		= MKMapTypeHybrid
+    OFXIOS_MAPKIT_MAP           = MKMapTypeStandard,
+    OFXIOS_MAPKIT_SATELLITE     = MKMapTypeSatellite,
+    OFXIOS_MAPKIT_HYRBID        = MKMapTypeHybrid
 };
 
 
@@ -83,7 +84,7 @@ public:
 	void setRegionWithMeters(double latitude, double longitude, double metersLatitude, double metersLongitude, bool animated = true);
 	
 	// set the map type (see ofxiOSMapKitType above)
-	void setType(ofxiOSMapKitType type = ofxiOS_MAPKIT_MAP);
+	void setType(ofxiOSMapKitType type = OFXIOS_MAPKIT_MAP);
 	
 	// set whether user location is visible on the map (as a blue dot)
 	void setShowUserLocation(bool b);
@@ -107,7 +108,7 @@ public:
 	
 	
 	// convert location (latitude, longitude) to screen coordinates (i.e. pixels)
-	ofPoint getScreenCoordinatesForLocation(double latitude, double longitude);
+	glm::vec2 getScreenCoordinatesForLocation(double latitude, double longitude);
 	
 	// convert screen coordinates (i.e. pixels) to location (latitude, longitude)
 	ofxMapKitLocation getLocationForScreenCoordinates(float x, float y);
@@ -132,7 +133,7 @@ public:
 	void regionDidChange(bool animated);
 	void willStartLoadingMap();
 	void didFinishLoadingMap();
-	void errorLoadingMap(string errorDescription);
+	void errorLoadingMap(std::string errorDescription);
 	
 
 	// return instance to MKMapView
@@ -149,7 +150,17 @@ protected:
 	void _setRegion(CLLocationCoordinate2D center, MKCoordinateSpan span, bool animated);
 };
 
+//-------------------------------------------------------------------------------
+// backwards compatibility == 0.8.1
+#define ofxiOS_MAPKIT_MAP           OFXIOS_MAPKIT_MAP
+#define ofxiOS_MAPKIT_SATELLITE     OFXIOS_MAPKIT_SATELLITE
+#define ofxiOS_MAPKIT_HYRBID        OFXIOS_MAPKIT_HYRBID
+// backwards compatibility < 0.8.0
+#define ofxiPhone_MAPKIT_MAP        OFXIOS_MAPKIT_MAP
+#define ofxiPhone_MAPKIT_SATELLITE  OFXIOS_MAPKIT_SATELLITE
+#define ofxiPhone_MAPKIT_HYRBID     OFXIOS_MAPKIT_HYRBID
 #define ofxiPhoneMapKit ofxiOSMapKit
-
+//-------------------------------------------------------------------------------
 
 #endif
+

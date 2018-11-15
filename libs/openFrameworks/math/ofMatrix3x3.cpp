@@ -1,4 +1,7 @@
 #include "ofMatrix3x3.h"
+#include <iomanip>
+
+using namespace std;
 
 ofMatrix3x3::ofMatrix3x3( float _a, float _b, float _c,
 			  float _d, float _e, float _f,
@@ -50,7 +53,7 @@ float& ofMatrix3x3::operator[]( const int& index ) {
 }
 
 
-/**
+/*
  * Transpose:
  * This changes the matrix.
  * [ a b c ]T    [ a d g ]
@@ -64,7 +67,7 @@ void ofMatrix3x3::transpose() {
 	f += h; h = f - h; f -= h; //swap f and h
 }
 
-/**
+/*
 * Transpose without changing the matrix.
 * Uses the "swap" method with additions and subtractions to swap the elements that aren't on the main diagonal.
 * @return transposed matrix.
@@ -78,7 +81,7 @@ ofMatrix3x3 ofMatrix3x3::transpose(const ofMatrix3x3& A) {
 
 
 
-/**
+/*
 * Determinant: http://mathworld.wolfram.com/Determinant.html
 */
 
@@ -98,7 +101,7 @@ float ofMatrix3x3::determinant(const ofMatrix3x3& A) {
 
 
 
-/**
+/*
 * Inverse of a 3x3 matrix
   the inverse is the adjoint divided through the determinant
   find the matrix of minors (minor = determinant of 2x2 matrix of the 2 rows/colums current element is NOT in)
@@ -133,7 +136,7 @@ ofMatrix3x3 ofMatrix3x3::inverse(const ofMatrix3x3& A) {
 
 
 
-/**
+/*
 * Add two matrices
 */
 ofMatrix3x3 ofMatrix3x3::operator+(const ofMatrix3x3& B) {
@@ -162,7 +165,7 @@ void ofMatrix3x3::operator+=(const ofMatrix3x3& B) {
 	i += B.i;
 }
 
-/**
+/*
 * Subtract two matrices
 */
 ofMatrix3x3 ofMatrix3x3::operator-(const ofMatrix3x3& B) {
@@ -192,7 +195,7 @@ void ofMatrix3x3::operator-=(const ofMatrix3x3& B) {
 }
 
 
-/**
+/*
 * Multiply a matrix with a scalar
 */
 ofMatrix3x3 ofMatrix3x3::operator*(float scalar) {
@@ -240,24 +243,24 @@ void ofMatrix3x3::operator*=(float scalar) {
 	i *= scalar;
 }
 
- /**
+ /*
  * Multiply a 3x3 matrix with a 3x3 matrix
  */
 ofMatrix3x3 ofMatrix3x3::operator*(const ofMatrix3x3& B) {
 	ofMatrix3x3 C;
 	C.a = a * B.a + b * B.d + c * B.g;
 	C.b = a * B.b + b * B.e + c * B.h;
-	C.c = a * B.c + b * B.h + c * B.i;
+	C.c = a * B.c + b * B.f + c * B.i;
 	C.d = d * B.a + e * B.d + f * B.g;
 	C.e = d * B.b + e * B.e + f * B.h;
-	C.f = d * B.c + e * B.h + f * B.i;
+	C.f = d * B.c + e * B.f + f * B.i;
 	C.g = g * B.a + h * B.d + i * B.g;
 	C.h = g * B.b + h * B.e + i * B.h;
-	C.i = g * B.c + h * B.h + i * B.i;
+	C.i = g * B.c + h * B.f + i * B.i;
 	return C;
 }
 
-/**
+/*
 * Divide a matrix through a scalar
 */
 ofMatrix3x3 ofMatrix3x3::operator/(float scalar) {
@@ -323,10 +326,14 @@ istream& operator>>(istream& is, ofMatrix3x3& M) {
 	is >> M.a; is.ignore(2);
 	is >> M.b; is.ignore(2);
 	is >> M.c; is.ignore(1);
+
 	is >> M.d; is.ignore(2);
 	is >> M.e; is.ignore(2);
 	is >> M.f; is.ignore(1);
-	is >> M.h;
+
+	is >> M.g; is.ignore(2);
+	is >> M.h; is.ignore(2);
+	is >> M.i;
 	return is;
 }
 

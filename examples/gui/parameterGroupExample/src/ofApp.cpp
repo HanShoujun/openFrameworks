@@ -7,6 +7,7 @@ void ofApp::setup(){
 
 	parameters.setName("settings");
 	parameters.add(vSync.set("vSync",true));
+	vSync.addListener(this, &ofApp::vSyncChanged);
 	parameters.add(renderer1.parameters);
 	parameters.add(renderer2.parameters);
 
@@ -14,12 +15,13 @@ void ofApp::setup(){
 
 	gui.loadFromFile("settings.xml");
 
-	font.loadFont("Regular",9,true,true);
+	font.load( OF_TTF_SANS,9,true,true);
 	ofEnableAlphaBlending();
 }
 
 void ofApp::vSyncChanged(bool & vSync){
 	ofSetVerticalSync(vSync);
+	ofLogNotice() << "vSync changed: " << vSync;
 }
 
 
@@ -44,12 +46,12 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
 	if(key=='s'){
-		settings.serialize(parameters);
+        ofSerialize(settings,parameters);
 		settings.save("settings.xml");
 	}
 	if(key=='l'){
 		settings.load("settings.xml");
-		settings.deserialize(parameters);
+        ofDeserialize(settings, parameters);
 	}
 	if(key=='o'){
 		cout << renderer1.parameters;
@@ -83,6 +85,16 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
 
 }
 

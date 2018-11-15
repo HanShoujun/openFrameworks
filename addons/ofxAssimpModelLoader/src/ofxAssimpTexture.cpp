@@ -6,29 +6,20 @@
 //
 
 #include "ofxAssimpTexture.h"
+#include "ofConstants.h"
+
+using namespace std;
 
 ofxAssimpTexture::ofxAssimpTexture() {
-    this->texture = NULL;
-    this->texturePath = "";
+    texturePath = "";
 }
 
-ofxAssimpTexture::ofxAssimpTexture(ofxAssimpTexture * assimpTexture) {
-    if(assimpTexture == NULL) {
-        this->texture = NULL;
-        this->texturePath = "";
-        return;
-    }
-    
-    this->texture = assimpTexture->getTexturePtr();
-    this->texturePath = assimpTexture->getTexturePath();
-}
-
-ofxAssimpTexture::ofxAssimpTexture(ofTexture * texture, string texturePath) {
+ofxAssimpTexture::ofxAssimpTexture(ofTexture texture, string texturePath) {
     this->texture = texture;
     this->texturePath = texturePath;
 }
 
-ofTexture * ofxAssimpTexture::getTexturePtr() {
+ofTexture & ofxAssimpTexture::getTextureRef() {
     return texture;
 }
 
@@ -37,5 +28,5 @@ string ofxAssimpTexture::getTexturePath() {
 }
 
 bool ofxAssimpTexture::hasTexture() {
-    return (texture != NULL);
+    return texture.isAllocated();
 }

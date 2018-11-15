@@ -1,8 +1,7 @@
 #pragma once
 
-#include "ofMain.h"
 #include "ofxiOS.h"
-#include "ofxiOSExtras.h"
+#include "ofxiOSImagePicker.h"
 
 class ofApp : public ofxiOSApp{
 	
@@ -23,9 +22,15 @@ class ofApp : public ofxiOSApp{
         void gotMemoryWarning();
         void deviceOrientationChanged(int newOrientation);
 	
-        ofxiOSImagePicker * camera;
+        ofxiOSImagePicker camera;
         ofImage	photo;
         ofPoint imgPos;
+        ofPoint prePoint;
 	
+        ofImage camImg;
+        ofImage libImg;
+    
+        ofRectangle camRect;
+        ofRectangle libRect;
 };
 

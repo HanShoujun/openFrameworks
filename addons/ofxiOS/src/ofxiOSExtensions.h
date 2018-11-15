@@ -7,10 +7,7 @@
 
 #pragma once
 
-void ofGLReadyCallback();
 void ofReloadGLResources();
-
-void ofUpdateBitmapCharacterTexture();
 void ofReloadAllImageTextures();
 void ofReloadAllFontTextures();
 void ofUnloadAllFontTextures();

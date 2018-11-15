@@ -16,7 +16,7 @@ void ofApp::setup(){
 	lutImg.allocate(640, 480, OF_IMAGE_COLOR);
 	
 	vidGrabber.setVerbose(true);
-	vidGrabber.initGrabber(640,480);
+	vidGrabber.setup(640,480);
 
 	
 	thumbPos.set(lutImg.getWidth()*0.5f-80, -lutImg.getHeight()*0.5f - 60, 0);
@@ -32,7 +32,7 @@ void ofApp::update(){
 	
 	if (doLUT) {
 		if (vidGrabber.isFrameNew()){
-			applyLUT(vidGrabber.getPixelsRef());
+			applyLUT(vidGrabber.getPixels());
 		}
 	}
 }
@@ -46,7 +46,7 @@ void ofApp::draw(){
 	if(doLUT){
 		
 		lutImg.draw(lutPos.x, lutPos.y);
-		ofRect(thumbPos.x-3, thumbPos.y-3, 166, 126);
+		ofDrawRectangle(thumbPos.x-3, thumbPos.y-3, 166, 126);
 		vidGrabber.draw(thumbPos.x, thumbPos.y, 160, 120);
 		
 		ofDrawBitmapString(dir.getName(dirLoadIndex), lutPos.x, -lutPos.y+50);
@@ -84,8 +84,8 @@ void ofApp::loadLUT(string path){
 void ofApp::applyLUT(ofPixelsRef pix){
 	if (LUTloaded) {
 		
-		for(int y = 0; y < pix.getHeight(); y++){
-			for(int x = 0; x < pix.getWidth(); x++){
+		for(size_t y = 0; y < pix.getHeight(); y++){
+			for(size_t x = 0; x < pix.getWidth(); x++){
 				
 				ofColor color = pix.getColor(x, y);
 				
@@ -166,3 +166,27 @@ void ofApp::mouseReleased(int x, int y, int button){
 
 }
 
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::windowResized(int w, int h){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::gotMessage(ofMessage msg){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::dragEvent(ofDragInfo dragInfo){ 
+
+}

@@ -1,6 +1,7 @@
 #include "ofxTCPServer.h"
 #include "ofxTCPClient.h"
 #include "ofUtils.h"
+#include "ofLog.h"
 
 //--------------------------
 ofxTCPServer::ofxTCPServer(){
@@ -24,25 +25,40 @@ void ofxTCPServer::setVerbose(bool _verbose){
 
 //--------------------------
 bool ofxTCPServer::setup(int _port, bool blocking){
+	ofxTCPSettings settings(_port);
+
+	settings.blocking = blocking;
+
+	return setup(settings);
+}
+
+
+//--------------------------
+bool ofxTCPServer::setup(const ofxTCPSettings &settings){
 	if( !TCPServer.Create() ){
 		ofLogError("ofxTCPServer") << "setup(): couldn't create server";
 		return false;
 	}
-	if( !TCPServer.Bind(_port) ){
-		ofLogError("ofxTCPServer") << "setup(): couldn't bind to port " << _port;
+	if( !TCPServer.Bind(settings.port) ){
+		ofLogError("ofxTCPServer") << "setup(): couldn't bind to port " << settings.port;
 		return false;
 	}
 
 	connected		= true;
-	port			= _port;
-	bClientBlocking = blocking;
+	port           	= settings.port;
+	bClientBlocking	= settings.blocking;
 
-	startThread(true, false);
+	setMessageDelimiter(settings.messageDelimiter);
+
+	std::unique_lock<std::mutex> lck(mConnectionsLock);
+	startThread();
+    serverReady.wait(lck);
+
 	return true;
 }
 
 //--------------------------
-void ofxTCPServer::setMessageDelimiter(string delim){
+void ofxTCPServer::setMessageDelimiter(std::string delim){
 	if(delim != ""){
 		messageDelimiter = delim;
 	}
@@ -50,27 +66,14 @@ void ofxTCPServer::setMessageDelimiter(string delim){
 
 //--------------------------
 bool ofxTCPServer::close(){
-
-	if(!connected) return true;
-
-	mConnectionsLock.lock();
-	map<int,ofPtr<ofxTCPClient> >::iterator it;
-	for(it=TCPConnections.begin(); it!=TCPConnections.end(); it++){
-		it->second->close();
-	}
-	TCPConnections.clear();
-	mConnectionsLock.unlock();	//	unlock for thread
-	stopThread();
-
+    stopThread();
 	if( !TCPServer.Close() ){
 		ofLogWarning("ofxTCPServer") << "close(): couldn't close connections";
-
-		waitForThread(false); //stop the thread
+		waitForThread(false); // wait for the thread to finish
 		return false;
-	}else{
-		connected = false;
-
-		waitForThread(false); //stop the thread
+    }else{
+        ofLogVerbose("ofxTCPServer") << "Closing server";
+		waitForThread(false); // wait for the thread to finish
 		return true;
 	}
 }
@@ -81,7 +84,7 @@ ofxTCPClient & ofxTCPServer::getClient(int clientID){
 
 //--------------------------
 bool ofxTCPServer::disconnectClient(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "disconnectClient(): client " << clientID << " doesn't exist";
 		return false;
@@ -93,28 +96,34 @@ bool ofxTCPServer::disconnectClient(int clientID){
 }
 
 //--------------------------
-bool ofxTCPServer::send(int clientID, string message){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+bool ofxTCPServer::disconnectAllClients(){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+    TCPConnections.clear();
+    return true;
+}
+
+//--------------------------
+bool ofxTCPServer::send(int clientID, std::string message){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "send(): client " << clientID << " doesn't exist";
 		return false;
 	}else{
-		getClient(clientID).send(message);
+        auto ret = getClient(clientID).send(message);
 		if(!getClient(clientID).isConnected()) TCPConnections.erase(clientID);
-		return true;
+        return ret;
 	}
 }
 
 //--------------------------
-bool ofxTCPServer::sendToAll(string message){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+bool ofxTCPServer::sendToAll(std::string message){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if(TCPConnections.size() == 0) return false;
 
-	map<int,ofPtr<ofxTCPClient> >::iterator it;
-	vector<int> disconnect;
-	for(it=TCPConnections.begin(); it!=TCPConnections.end(); it++){
-		if(it->second->isConnected()) it->second->send(message);
-		else disconnect.push_back(it->first);
+	std::vector<int> disconnect;
+	for(auto & conn: TCPConnections){
+		if(conn.second->isConnected()) conn.second->send(message);
+		else disconnect.push_back(conn.first);
 	}
 	for(int i=0; i<(int)disconnect.size(); i++){
     	TCPConnections.erase(disconnect[i]);
@@ -123,15 +132,15 @@ bool ofxTCPServer::sendToAll(string message){
 }
 
 //--------------------------
-string ofxTCPServer::receive(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+std::string ofxTCPServer::receive(int clientID){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "receive(): client " << clientID << " doesn't exist";
 		return "client " + ofToString(clientID) + "doesn't exist";
 	}
 	
 	if( !getClient(clientID).isConnected() ){
-		disconnectClient(clientID);
+        TCPConnections.erase(clientID);
 		return "";
 	}
 
@@ -140,7 +149,7 @@ string ofxTCPServer::receive(int clientID){
 
 //--------------------------
 bool ofxTCPServer::sendRawBytes(int clientID, const char * rawBytes, const int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "sendRawBytes(): client " << clientID << " doesn't exist";
 		
@@ -153,12 +162,13 @@ bool ofxTCPServer::sendRawBytes(int clientID, const char * rawBytes, const int n
 
 //--------------------------
 bool ofxTCPServer::sendRawBytesToAll(const char * rawBytes, const int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if(TCPConnections.size() == 0 || numBytes <= 0) return false;
 
-	map<int,ofPtr<ofxTCPClient> >::iterator it;
-	for(it=TCPConnections.begin(); it!=TCPConnections.end(); it++){
-		if(it->second->isConnected())it->second->sendRawBytes(rawBytes, numBytes);
+	for(auto & conn: TCPConnections){
+		if(conn.second->isConnected()){
+			conn.second->sendRawBytes(rawBytes, numBytes);
+		}
 	}
 	return true;
 }
@@ -166,7 +176,7 @@ bool ofxTCPServer::sendRawBytesToAll(const char * rawBytes, const int numBytes){
 
 //--------------------------
 bool ofxTCPServer::sendRawMsg(int clientID, const char * rawBytes, const int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "sendRawMsg(): client " << clientID << " doesn't exist";
 		return false;
@@ -178,19 +188,20 @@ bool ofxTCPServer::sendRawMsg(int clientID, const char * rawBytes, const int num
 
 //--------------------------
 bool ofxTCPServer::sendRawMsgToAll(const char * rawBytes, const int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
-	if(TCPConnections.size() == 0 || numBytes <= 0) return false;
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+	if(TCPConnections.empty() || numBytes <= 0) return false;
 
-	map<int,ofPtr<ofxTCPClient> >::iterator it;
-	for(it=TCPConnections.begin(); it!=TCPConnections.end(); it++){
-		if(it->second->isConnected())it->second->sendRawMsg(rawBytes, numBytes);
+	for(auto & conn: TCPConnections){
+		if(conn.second->isConnected()){
+			conn.second->sendRawMsg(rawBytes, numBytes);
+		}
 	}
 	return true;
 }
 
 //--------------------------
 int ofxTCPServer::getNumReceivedBytes(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "getNumReceivedBytes(): client " << clientID << " doesn't exist";
 		return 0;
@@ -201,7 +212,7 @@ int ofxTCPServer::getNumReceivedBytes(int clientID){
 
 //--------------------------
 int ofxTCPServer::receiveRawBytes(int clientID, char * receiveBytes,  int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "receiveRawBytes(): client " << clientID << " doesn't exist";
 		return 0;
@@ -212,8 +223,19 @@ int ofxTCPServer::receiveRawBytes(int clientID, char * receiveBytes,  int numByt
 
 
 //--------------------------
+int ofxTCPServer::peekReceiveRawBytes(int clientID, char * receiveBytes,  int numBytes){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+	if( !isClientSetup(clientID) ){
+		ofLog(OF_LOG_WARNING, "ofxTCPServer: client " + ofToString(clientID) + " doesn't exist");
+		return 0;
+	}
+
+	return getClient(clientID).peekReceiveRawBytes(receiveBytes, numBytes);
+}
+
+//--------------------------
 int ofxTCPServer::receiveRawMsg(int clientID, char * receiveBytes,  int numBytes){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "receiveRawMsg(): client " << clientID << " doesn't exist";
 		return 0;
@@ -224,7 +246,7 @@ int ofxTCPServer::receiveRawMsg(int clientID, char * receiveBytes,  int numBytes
 
 //--------------------------
 int ofxTCPServer::getClientPort(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "getClientPort(): client " << clientID << " doesn't exist";
 		return 0;
@@ -233,8 +255,8 @@ int ofxTCPServer::getClientPort(int clientID){
 }
 
 //--------------------------
-string ofxTCPServer::getClientIP(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+std::string ofxTCPServer::getClientIP(int clientID){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	if( !isClientSetup(clientID) ){
 		ofLogWarning("ofxTCPServer") << "getClientIP(): client " << clientID << " doesn't exist";
 		return "000.000.000.000";
@@ -244,7 +266,6 @@ string ofxTCPServer::getClientIP(int clientID){
 
 //--------------------------
 int ofxTCPServer::getNumClients(){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
 	return TCPConnections.size();
 }
 
@@ -270,8 +291,23 @@ bool ofxTCPServer::isClientSetup(int clientID){
 
 //--------------------------
 bool ofxTCPServer::isClientConnected(int clientID){
-	ofMutex::ScopedLock Lock( mConnectionsLock );
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
 	return isClientSetup(clientID) && getClient(clientID).isConnected();
+}
+
+
+void ofxTCPServer::waitConnectedClient(){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+	if(TCPConnections.empty()){
+		serverReady.wait(lck);
+	}
+}
+
+void ofxTCPServer::waitConnectedClient(int ms){
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+	if(TCPConnections.empty()){
+		serverReady.wait_for(lck, std::chrono::milliseconds(ms));
+	}
 }
 
 //don't call this
@@ -294,23 +330,32 @@ void ofxTCPServer::threadedFunction(){
 		if( !TCPServer.Listen(TCP_MAX_CLIENTS) ){
 			if(isThreadRunning()) ofLogError("ofxTCPServer") << "listening failed";
 		}
+
+        {
+			std::unique_lock<std::mutex> lck( mConnectionsLock );
+            serverReady.notify_one();
+        }
 		
 		//	we need to lock here, but can't as it blocks...
 		//	so use a temporary to not block the lock 
-		ofPtr<ofxTCPClient> client(new ofxTCPClient);
+		std::shared_ptr<ofxTCPClient> client(new ofxTCPClient);
 		if( !TCPServer.Accept( client->TCPClient ) ){
 			if(isThreadRunning()) ofLogError("ofxTCPServer") << "couldn't accept client " << acceptId;
 		}else{
-			ofMutex::ScopedLock Lock( mConnectionsLock );
+			std::unique_lock<std::mutex> lck( mConnectionsLock );
 			//	take owenership of socket from NewClient
 			TCPConnections[acceptId] = client;
-			TCPConnections[acceptId]->setup(acceptId, bClientBlocking);
+            TCPConnections[acceptId]->setupConnectionIdx(acceptId, bClientBlocking);
 			TCPConnections[acceptId]->setMessageDelimiter(messageDelimiter);
 			ofLogVerbose("ofxTCPServer") << "client " << acceptId << " connected on port " << TCPConnections[acceptId]->getPort();
 			if(acceptId == idCount) idCount++;
+			serverReady.notify_all();
 		}
 	}
 	idCount = 0;
+	std::unique_lock<std::mutex> lck( mConnectionsLock );
+	TCPConnections.clear();
+	connected = false;
 	ofLogVerbose("ofxTCPServer") << "listening thread stopped";
 }
 

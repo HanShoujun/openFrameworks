@@ -77,7 +77,7 @@ int ofxCvContourFinder::findContours( ofxCvGrayscaleImage&  input,
 	contour_storage = cvCreateMemStorage( 1000 );
 	storage	= cvCreateMemStorage( 1000 );
 
-	CvContourRetrievalMode  retrieve_mode
+	int retrieve_mode
         = (bFindHoles) ? CV_RETR_LIST : CV_RETR_EXTERNAL;
 	cvFindContours( inputCopy.getCvImage(), contour_storage, &contour_list,
                     sizeof(CvContour), retrieve_mode, bUseApproximation ? CV_CHAIN_APPROX_SIMPLE : CV_CHAIN_APPROX_NONE );
@@ -155,7 +155,7 @@ int ofxCvContourFinder::findContours( ofxCvGrayscaleImage&  input,
 }
 
 //--------------------------------------------------------------------------------
-void ofxCvContourFinder::draw( float x, float y, float w, float h ) {
+void ofxCvContourFinder::draw( float x, float y, float w, float h ) const {
 
     float scalex = 0.0f;
     float scaley = 0.0f;
@@ -173,14 +173,14 @@ void ofxCvContourFinder::draw( float x, float y, float w, float h ) {
     ofPushStyle();
 	// ---------------------------- draw the bounding rectangle
 	ofSetHexColor(0xDD00CC);
-    glPushMatrix();
-    glTranslatef( x, y, 0.0 );
-    glScalef( scalex, scaley, 0.0 );
+    ofPushMatrix();
+    ofTranslate( x, y, 0.0 );
+    ofScale( scalex, scaley, 0.0 );
 
 	ofNoFill();
 	for( int i=0; i<(int)blobs.size(); i++ ) {
-		ofRect( blobs[i].boundingRect.x, blobs[i].boundingRect.y,
-                blobs[i].boundingRect.width, blobs[i].boundingRect.height );
+		ofDrawRectangle( blobs[i].boundingRect.x, blobs[i].boundingRect.y,
+                        blobs[i].boundingRect.width, blobs[i].boundingRect.height );
 	}
 
 	// ---------------------------- draw the blobs
@@ -195,18 +195,18 @@ void ofxCvContourFinder::draw( float x, float y, float w, float h ) {
 		ofEndShape();
 
 	}
-	glPopMatrix();
+	ofPopMatrix();
 	ofPopStyle();
 }
 
 
 //----------------------------------------------------------
-void ofxCvContourFinder::draw(const ofPoint & point){
+void ofxCvContourFinder::draw(const ofPoint & point) const{
 	draw(point.x, point.y);
 }
 
 //----------------------------------------------------------
-void ofxCvContourFinder::draw(const ofRectangle & rect){
+void ofxCvContourFinder::draw(const ofRectangle & rect) const{
 	draw(rect.x, rect.y, rect.width, rect.height);
 }
 

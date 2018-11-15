@@ -28,14 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE. 
  *
  * ***********************************************************************/ 
-
-#import "ofMain.h"
-#import "ofGLProgrammableRenderer.h"
-#import "ofAppiOSWindow.h"
-#import "ofxiOSEAGLView.h"
-#import "ofxiOSAppDelegate.h"
-#import "ofxiOSViewController.h"
-#import "ofxiOSExtras.h"
+#include <TargetConditionals.h>
+#include "ofAppiOSWindow.h"
+#include "ofGLRenderer.h"
+#include "ofGLProgrammableRenderer.h"
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
+    #include "ofxiOSAppDelegate.h"
+    #include "ofxiOSViewController.h"
+    const std::string appDelegateName = "ofxiOSAppDelegate";
+#elif TARGET_OS_TV
+    #include "ofxtvOSAppDelegate.h"
+    #include "ofxtvOSViewController.h"
+    const std::string appDelegateName = "ofxtvOSAppDelegate";
+#endif
+#include "ofxiOSGLKView.h"
+#include "ofxiOSEAGLView.h"
 
 //----------------------------------------------------------------------------------- instance.
 static ofAppiOSWindow * _instance = NULL;
@@ -44,58 +51,99 @@ ofAppiOSWindow * ofAppiOSWindow::getInstance() {
 }
 
 //----------------------------------------------------------------------------------- constructor / destructor.
-ofAppiOSWindow::ofAppiOSWindow() {
+ofAppiOSWindow::ofAppiOSWindow() : hasExited(false) {
 	if(_instance == NULL) {
         _instance = this;
     } else {
-        ofLogError("ofAppiOSWindow") << "instanciated more than once";
+        ofLog(OF_LOG_ERROR, "ofAppiOSWindow instantiated more than once");
     }
-
-    windowMode = OF_FULLSCREEN;
-    
-	bEnableSetupScreen = true;
-//    orientation = OF_ORIENTATION_DEFAULT;
-    orientation = OF_ORIENTATION_UNKNOWN;
-    
-    bHardwareOrientation = false;
-    bOrientationIsAnimated = false;
-
-	bRetinaEnabled = false;
     bRetinaSupportedOnDevice = false;
     bRetinaSupportedOnDeviceChecked = false;
-	bDepthEnabled = false;
-	bAntiAliasingEnabled = false;
-    antiAliasingSamples = 0;
 }
 
 ofAppiOSWindow::~ofAppiOSWindow() {
-    //
+    close();
+	_instance = NULL;
+}
+
+void ofAppiOSWindow::close() {
+    if(hasExited == false){
+        hasExited = true;
+        events().notifyExit();
+        events().disable();
+    }
+}
+
+void ofAppiOSWindow::setup(const ofWindowSettings & _settings) {
+    const ofiOSWindowSettings * iosSettings = dynamic_cast<const ofiOSWindowSettings*>(&_settings);
+    if(iosSettings){
+        setup(*iosSettings);
+    } else{
+        setup(ofiOSWindowSettings(_settings));
+    }
+}
+
+void ofAppiOSWindow::setup(const ofGLESWindowSettings & _settings) {
+    const ofiOSWindowSettings * iosSettings = dynamic_cast<const ofiOSWindowSettings*>(&_settings);
+    if(iosSettings){
+        setup(*iosSettings);
+    } else{
+        setup(ofiOSWindowSettings(_settings));
+    }
+}
+
+void ofAppiOSWindow::setup(const ofiOSWindowSettings & _settings) {
+    settings = _settings;
+	setup();
+}
+
+void ofAppiOSWindow::setup() {
+	
+	
+	if(settings.setupOrientation == OF_ORIENTATION_UNKNOWN) {
+		settings.setupOrientation = OF_ORIENTATION_DEFAULT;
+	}
+	setOrientation(settings.setupOrientation);
+	if(settings.glesVersion >= ESRendererVersion_20) {
+		currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLProgrammableRenderer(this));
+	} else {
+		currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLRenderer(this));
+	}
+	
+	hasExited = false;
 }
 
 //----------------------------------------------------------------------------------- opengl setup.
-void ofAppiOSWindow::setupOpenGL(int w, int h, int screenMode) {
-	windowMode = screenMode; // use this as flag for displaying status bar or not
+void ofAppiOSWindow::setupOpenGL(int w, int h, ofWindowMode screenMode) {
+	settings.windowMode = screenMode; // use this as flag for displaying status bar or not
+    setup(settings);
 }
 
-void ofAppiOSWindow::initializeWindow() {
-    //
+void ofAppiOSWindow::loop() {
+    startAppWithDelegate(appDelegateName);
 }
 
-void ofAppiOSWindow::runAppViaInfiniteLoop(ofBaseApp * appPtr) {
-    startAppWithDelegate("ofxiOSAppDelegate");
+void ofAppiOSWindow::run(ofBaseApp * appPtr){
+    startAppWithDelegate(appDelegateName);
 }
 
-void ofAppiOSWindow::startAppWithDelegate(string appDelegateClassName) {
+void ofAppiOSWindow::startAppWithDelegate(std::string appDelegateClassName) {
     static bool bAppCreated = false;
     if(bAppCreated == true) {
         return;
     }
     bAppCreated = true;
     
-    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-    cout << " trying to lauunch delegate " << appDelegateClassName << endl; 
-    UIApplicationMain(nil, nil, nil, [NSString stringWithUTF8String:appDelegateClassName.c_str()]);
-    [pool release];
+    @autoreleasepool {
+        UIApplicationMain(0, nil, nil, [NSString stringWithUTF8String:appDelegateClassName.c_str()]);
+    }
+}
+
+void ofAppiOSWindow::update() {
+    
+}
+void ofAppiOSWindow::draw() {
+    
 }
 
 
@@ -117,36 +165,50 @@ void ofAppiOSWindow::setWindowShape(int w, int h) {
 	// not supported on iOS.
 }
 
-ofPoint	ofAppiOSWindow::getWindowPosition() {
-	return *[[ofxiOSEAGLView getInstance] getWindowPosition];
+glm::vec2	ofAppiOSWindow::getWindowPosition() {
+	if(settings.windowControllerType == METAL_KIT || settings.windowControllerType == GL_KIT)
+		return *[[ofxiOSGLKView getInstance] getWindowPosition];
+	else
+		return *[[ofxiOSEAGLView getInstance] getWindowPosition];
 }
 
-ofPoint	ofAppiOSWindow::getWindowSize() {
-	return *[[ofxiOSEAGLView getInstance] getWindowSize];
+glm::vec2	ofAppiOSWindow::getWindowSize() {
+	if(settings.windowControllerType == METAL_KIT || settings.windowControllerType == GL_KIT)
+		return *[[ofxiOSGLKView getInstance] getWindowSize];
+	else
+		return *[[ofxiOSEAGLView getInstance] getWindowSize];
 }
 
-ofPoint	ofAppiOSWindow::getScreenSize() {
-	return *[[ofxiOSEAGLView getInstance] getScreenSize];
+glm::vec2	ofAppiOSWindow::getScreenSize() {
+	if(settings.windowControllerType == METAL_KIT || settings.windowControllerType == GL_KIT)
+		return *[[ofxiOSGLKView getInstance] getScreenSize];
+	else
+		return *[[ofxiOSEAGLView getInstance] getScreenSize];
 }
 
 int ofAppiOSWindow::getWidth(){
-	if(bHardwareOrientation == true || orientation == OF_ORIENTATION_DEFAULT || orientation == OF_ORIENTATION_180){
+	if(settings.enableHardwareOrientation == true ||
+       orientation == OF_ORIENTATION_DEFAULT ||
+       orientation == OF_ORIENTATION_180) {
 		return (int)getWindowSize().x;
 	}
 	return (int)getWindowSize().y;
 }
 
 int ofAppiOSWindow::getHeight(){
-	if(bHardwareOrientation == true || orientation == OF_ORIENTATION_DEFAULT || orientation == OF_ORIENTATION_180){
+	if(settings.enableHardwareOrientation == true ||
+       orientation == OF_ORIENTATION_DEFAULT ||
+       orientation == OF_ORIENTATION_180) {
 		return (int)getWindowSize().y;
 	}
 	return (int)getWindowSize().x;
 }
 
-int	ofAppiOSWindow::getWindowMode() {
-	return windowMode;
+ofWindowMode ofAppiOSWindow::getWindowMode() {
+	return settings.windowMode;
 }
 
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
 //----------------------------------------------------------------------------------- orientation.
 void ofAppiOSWindow::setOrientation(ofOrientation toOrientation) {
     if(orientation == toOrientation) {
@@ -157,7 +219,7 @@ void ofAppiOSWindow::setOrientation(ofOrientation toOrientation) {
     bool bResized = bOrientationPortraitOne != bOrientationPortraitTwo;
 
     orientation = toOrientation;
-    
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
     UIInterfaceOrientation interfaceOrientation = UIInterfaceOrientationPortrait;
     switch (orientation) {
         case OF_ORIENTATION_DEFAULT:
@@ -174,23 +236,29 @@ void ofAppiOSWindow::setOrientation(ofOrientation toOrientation) {
             break;
     }
 
+
     id<UIApplicationDelegate> appDelegate = [UIApplication sharedApplication].delegate;
     if([appDelegate respondsToSelector:@selector(glViewController)] == NO) {
         // check app delegate has glViewController,
         // otherwise calling glViewController will cause a crash.
         return;
     }
-    ofxiOSViewController * glViewController = ((ofxiOSAppDelegate *)appDelegate).glViewController;
-    ofxiOSEAGLView * glView = glViewController.glView;
-    
-    if(bHardwareOrientation == true) {
-        [glViewController rotateToInterfaceOrientation:interfaceOrientation animated:bOrientationIsAnimated];
-    } else {
-        [[UIApplication sharedApplication] setStatusBarOrientation:interfaceOrientation animated:bOrientationIsAnimated];
-        if(bResized == true) {
-            [glView layoutSubviews]; // calling layoutSubviews so window resize notification is fired.
-        }
-    }
+    UIViewController * uiViewController = ((ofxiOSAppDelegate *)appDelegate).uiViewController;
+	if([uiViewController isKindOfClass:[ofxiOSViewController class]] == YES) {
+		ofxiOSViewController * glViewController = (ofxiOSViewController*)uiViewController;
+		if(glViewController) {
+			ofxiOSEAGLView * glView = glViewController.glView;
+			if(settings.enableHardwareOrientation == true) {
+				[glViewController rotateToInterfaceOrientation:interfaceOrientation animated:settings.enableHardwareOrientationAnimation];
+			} else {
+				[[UIApplication sharedApplication] setStatusBarOrientation:interfaceOrientation animated:settings.enableHardwareOrientationAnimation];
+				if(bResized == true) {
+					[glView layoutSubviews]; // calling layoutSubviews so window resize notification is fired.
+				}
+			}
+		}
+	}
+#endif
 }
 
 ofOrientation ofAppiOSWindow::getOrientation() {
@@ -198,54 +266,61 @@ ofOrientation ofAppiOSWindow::getOrientation() {
 }
 
 bool ofAppiOSWindow::doesHWOrientation() {
-    return bHardwareOrientation;
+    return settings.enableHardwareOrientation;
 }
 
 //-----------------------------------------------------------------------------------
-void ofAppiOSWindow::setWindowTitle(string title) {
+bool ofAppiOSWindow::enableHardwareOrientation() {
+    return (settings.enableHardwareOrientation = true);
+}
+
+bool ofAppiOSWindow::disableHardwareOrientation() {
+    return (settings.enableHardwareOrientation = false);
+}
+
+bool ofAppiOSWindow::enableOrientationAnimation() {
+    return (settings.enableHardwareOrientationAnimation = true);
+}
+
+bool ofAppiOSWindow::disableOrientationAnimation() {
+    return (settings.enableHardwareOrientationAnimation = false);
+}
+
+#endif
+
+//-----------------------------------------------------------------------------------
+void ofAppiOSWindow::setWindowTitle(std::string title) {
     // not supported on iOS.
 }
 
 void ofAppiOSWindow::setFullscreen(bool fullscreen) {
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
     [[UIApplication sharedApplication] setStatusBarHidden:fullscreen withAnimation:UIStatusBarAnimationSlide];
-	if(fullscreen) {
-        windowMode = OF_FULLSCREEN;
+#endif
+    if(fullscreen) {
+        settings.windowMode = OF_FULLSCREEN;
     } else {
-        windowMode = OF_WINDOW;
+        settings.windowMode = OF_WINDOW;
     }
 }
 
 void ofAppiOSWindow::toggleFullscreen() {
-	if(windowMode == OF_FULLSCREEN) {
+    if(settings.windowMode == OF_FULLSCREEN) {
         setFullscreen(false);
     } else {
         setFullscreen(true);
     }
 }
 
-//-----------------------------------------------------------------------------------
-bool ofAppiOSWindow::enableHardwareOrientation() {
-    return (bHardwareOrientation = true);
-}
 
-bool ofAppiOSWindow::disableHardwareOrientation() {
-    return (bHardwareOrientation = false);
-}
-
-bool ofAppiOSWindow::enableOrientationAnimation() {
-    return (bOrientationIsAnimated = true);
-}
-
-bool ofAppiOSWindow::disableOrientationAnimation() {
-    return (bOrientationIsAnimated = false);
-}
 
 //-----------------------------------------------------------------------------------
 bool ofAppiOSWindow::enableRendererES2() {
     if(isRendererES2() == true) {
         return false;
     }
-    ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofGLProgrammableRenderer(false)));
+    std::shared_ptr<ofBaseRenderer>renderer (new ofGLProgrammableRenderer(this));
+    ofSetCurrentRenderer(renderer);
     return true;
 }
 
@@ -253,29 +328,39 @@ bool ofAppiOSWindow::enableRendererES1() {
     if(isRendererES1() == true) {
         return false;
     }
-    ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofGLRenderer(false)));
+    std::shared_ptr<ofBaseRenderer> renderer(new ofGLRenderer(this));
+    ofSetCurrentRenderer(renderer);
     return true;
 }
 
+
+bool ofAppiOSWindow::isProgrammableRenderer() {
+    return (currentRenderer && currentRenderer->getType()==ofGLProgrammableRenderer::TYPE);
+}
+
+ofxiOSRendererType ofAppiOSWindow::getGLESVersion() {
+    return (ofxiOSRendererType)settings.glesVersion;
+}
+
 bool ofAppiOSWindow::isRendererES2() {
-    return (ofGetCurrentRenderer() && ofGetCurrentRenderer()->getType()==ofGLProgrammableRenderer::TYPE);
+    return (isProgrammableRenderer() && settings.glesVersion == 2);
 }
 
 bool ofAppiOSWindow::isRendererES1() {
-    return (ofGetCurrentRenderer() && ofGetCurrentRenderer()->getType()==ofGLRenderer::TYPE);
+    return !isProgrammableRenderer();
 }
 
 //-----------------------------------------------------------------------------------
 void ofAppiOSWindow::enableSetupScreen() {
-	bEnableSetupScreen = true;
+	settings.enableSetupScreen = true;
 };
 
 void ofAppiOSWindow::disableSetupScreen() {
-	bEnableSetupScreen = false;
+	settings.enableSetupScreen = false;
 };
 
 bool ofAppiOSWindow::isSetupScreenEnabled() {
-    return bEnableSetupScreen;
+    return settings.enableSetupScreen;
 }
 
 void ofAppiOSWindow::setVerticalSync(bool enabled) {
@@ -283,19 +368,20 @@ void ofAppiOSWindow::setVerticalSync(bool enabled) {
 }
 
 //----------------------------------------------------------------------------------- retina.
-bool ofAppiOSWindow::enableRetina() {
+bool ofAppiOSWindow::enableRetina(float retinaScale) {
     if(isRetinaSupportedOnDevice()) {
-        bRetinaEnabled = true;
+        settings.enableRetina = true;
+        settings.retinaScale = retinaScale;
     }
-    return bRetinaEnabled;
+    return settings.enableRetina;
 }
 
 bool ofAppiOSWindow::disableRetina() {
-    return (bRetinaEnabled = false);
+    return (settings.enableRetina = false);
 }
 
 bool ofAppiOSWindow::isRetinaEnabled() {
-    return bRetinaEnabled;
+    return settings.enableRetina;
 }
 
 bool ofAppiOSWindow::isRetinaSupportedOnDevice() {
@@ -305,44 +391,98 @@ bool ofAppiOSWindow::isRetinaSupportedOnDevice() {
     
     bRetinaSupportedOnDeviceChecked = true;
     
-    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-    if([[UIScreen mainScreen] respondsToSelector:@selector(scale)]){
-        if ([[UIScreen mainScreen] scale] > 1){
-            bRetinaSupportedOnDevice = true;
+    @autoreleasepool {
+        if([[UIScreen mainScreen] respondsToSelector:@selector(scale)]){
+            if ([[UIScreen mainScreen] scale] > 1){
+                bRetinaSupportedOnDevice = true;
+            }
         }
     }
-    [pool release];
     
     return bRetinaSupportedOnDevice;
 }
 
+float ofAppiOSWindow::getRetinaScale() {
+    return settings.retinaScale;
+}
+
 //----------------------------------------------------------------------------------- depth buffer.
 bool ofAppiOSWindow::enableDepthBuffer() {
-    return (bDepthEnabled = true);
+	settings.depthType = ofxiOSRendererDepthFormat::DEPTH_24;
+    return (settings.enableDepth = true);
 }
 
 bool ofAppiOSWindow::disableDepthBuffer() {
-    return (bDepthEnabled = false);
+	settings.depthType = ofxiOSRendererDepthFormat::DEPTH_NONE;
+    return (settings.enableDepth = false);
 }
 
 bool ofAppiOSWindow::isDepthBufferEnabled() {
-    return bDepthEnabled;
+    return settings.enableDepth;
 }
 
 //----------------------------------------------------------------------------------- anti aliasing.
 bool ofAppiOSWindow::enableAntiAliasing(int samples) {
-	antiAliasingSamples = samples;
-    return (bAntiAliasingEnabled = true);
+	settings.numOfAntiAliasingSamples = samples;
+    return (settings.enableAntiAliasing = true);
+}
+
+void ofAppiOSWindow::enableMultiTouch(bool isOn) {
+	settings.enableMultiTouch = isOn;
+#if TARGET_OS_IOS || (TARGET_OS_IPHONE && !TARGET_OS_TV)
+	if(settings.windowControllerType == METAL_KIT || settings.windowControllerType == GL_KIT) {
+		if([ofxiOSGLKView getInstance]) {
+			[[ofxiOSGLKView getInstance] setMultipleTouchEnabled:isOn];
+		}
+	} else {
+		if([ofxiOSEAGLView getInstance])
+			[[ofxiOSEAGLView getInstance] setMultipleTouchEnabled:isOn];
+	}
+#endif
+}
+
+bool ofAppiOSWindow::isMultiTouch() {
+	return settings.enableMultiTouch;
 }
 
 bool ofAppiOSWindow::disableAntiAliasing() {
-    return (bAntiAliasingEnabled = false);
+    return (settings.enableAntiAliasing = false);
 }
 
 bool ofAppiOSWindow::isAntiAliasingEnabled() {
-    return bAntiAliasingEnabled;
+    return settings.enableAntiAliasing;
 }
 
 int	ofAppiOSWindow::getAntiAliasingSampleCount() {
-    return antiAliasingSamples;
+    return settings.numOfAntiAliasingSamples;
+}
+
+ofxiOSWindowControllerType ofAppiOSWindow::getWindowControllerType() {
+	return settings.windowControllerType;
+}
+
+ofxiOSRendererColorFormat ofAppiOSWindow::getRendererColorType() {
+	return settings.colorType;
+}
+
+ofxiOSRendererDepthFormat ofAppiOSWindow::getRendererDepthType() {
+	return settings.depthType;
+}
+
+ofxiOSRendererStencilFormat ofAppiOSWindow::getRendererStencilType() {
+	return settings.stencilType;
+}
+
+//-----------------------------------------------------------------------------------
+ofCoreEvents & ofAppiOSWindow::events(){
+    return coreEvents;
+}
+
+//-----------------------------------------------------------------------------------
+std::shared_ptr<ofBaseRenderer> & ofAppiOSWindow::renderer(){
+    return currentRenderer;
+}
+
+ofiOSWindowSettings & ofAppiOSWindow::getSettings() {
+    return settings;
 }

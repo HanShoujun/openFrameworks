@@ -8,30 +8,32 @@
 #include "ofxPanel.h"
 #include "ofGraphics.h"
 #include "ofImage.h"
-
-ofImage ofxPanel::loadIcon;
-ofImage ofxPanel::saveIcon;
+using namespace std;
 
 ofxPanel::ofxPanel()
 :bGrabbed(false){}
 
-ofxPanel::ofxPanel(const ofParameterGroup & parameters, string filename, float x, float y)
+ofxPanel::ofxPanel(const ofParameterGroup & parameters, const std::string& filename, float x, float y)
 : ofxGuiGroup(parameters, filename, x, y)
 , bGrabbed(false){
-	this->registerMouseEvents();
+	loadIcons();
+	registerMouseEvents();
+	setNeedsRedraw();
 }
 
-ofxPanel * ofxPanel::setup(string collectionName, string filename, float x, float y){
-	if(!loadIcon.isAllocated() || !saveIcon.isAllocated()){
-		loadIcons();
-	}
+ofxPanel::~ofxPanel(){
+	//
+}
+
+ofxPanel * ofxPanel::setup(const std::string& collectionName, const std::string& filename, float x, float y){
+	loadIcons();
+	registerMouseEvents();
 	return (ofxPanel*)ofxGuiGroup::setup(collectionName,filename,x,y);
 }
 
-ofxPanel * ofxPanel::setup(const ofParameterGroup & parameters, string filename, float x, float y){
-	if(!loadIcon.isAllocated() || !saveIcon.isAllocated()){
-		loadIcons();
-	}
+ofxPanel * ofxPanel::setup(const ofParameterGroup & parameters, const std::string& filename, float x, float y){
+	loadIcons();
+	registerMouseEvents();
 	return (ofxPanel*)ofxGuiGroup::setup(parameters,filename,x,y);
 }
 
@@ -43,8 +45,8 @@ void ofxPanel::loadIcons(){
 	loadStencilFromHex(loadIcon, loadIconData);
 	loadStencilFromHex(saveIcon, saveIconData);
 
-	loadIcon.getTextureReference().setTextureMinMagFilter(GL_NEAREST,GL_NEAREST);
-	saveIcon.getTextureReference().setTextureMinMagFilter(GL_NEAREST,GL_NEAREST);
+	loadIcon.getTexture().setTextureMinMagFilter(GL_NEAREST,GL_NEAREST);
+	saveIcon.getTexture().setTextureMinMagFilter(GL_NEAREST,GL_NEAREST);
 }
 
 void ofxPanel::generateDraw(){
@@ -97,7 +99,7 @@ void ofxPanel::render(){
 		ofEnableTextureEdgeHack();
 	}
 
-	for(int i = 0; i < (int)collection.size(); i++){
+	for(std::size_t i = 0; i < collection.size(); i++){
 		collection[i]->draw();
 	}
 
@@ -136,13 +138,15 @@ bool ofxPanel::setValue(float mx, float my, bool bCheck){
 			}
 
 			if(loadBox.inside(mx, my)) {
-				loadFromFile(filename);
-				ofNotifyEvent(loadPressedE,this);
+				if(!ofNotifyEvent(loadPressedE,this)){
+					loadFromFile(filename);
+				}
 				return true;
 			}
 			if(saveBox.inside(mx, my)) {
-				saveToFile(filename);
-				ofNotifyEvent(savePressedE,this);
+				if(!ofNotifyEvent(savePressedE,this)){
+					saveToFile(filename);
+				}
 				return true;
 			}
 		}

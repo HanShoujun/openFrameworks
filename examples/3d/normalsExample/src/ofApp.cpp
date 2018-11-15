@@ -38,8 +38,8 @@ void ofApp::setup(){
         ofVec3f next(radius*cos(nextTheta),radius*sin(nextTheta),radius*zamt*sin(zfreq*nextTheta) );
         
         // our normals for each triangle face is the cross product of the two vectors making up that sliver 
-        ofVec3f previousFaceNormal = prev.crossed(p);
-        ofVec3f nextFaceNormal = p.crossed(next);
+        ofVec3f previousFaceNormal = prev.getCrossed(p);
+        ofVec3f nextFaceNormal = p.getCrossed(next);
         
         /* notice here we go in the same direction: previous->current,current->next;
            we could similarly go next->current,current-prev, which would flip all of our normals;
@@ -76,7 +76,6 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    ofEnableLighting();
     ofBackgroundGradient(ofColor(65,62,50),ofColor(25,22,10) );
     
     // disable normals if a key is pressed
@@ -89,6 +88,8 @@ void ofApp::draw(){
     cam.begin();
     mesh.enableColors();
     mesh.drawWireframe();
+
+
     mesh.disableColors();
     ofSetColor(137,137,140);
     ofFill();
@@ -98,26 +99,28 @@ void ofApp::draw(){
     glPolygonOffset(-1,-1);
     #endif
 
+    ofEnableLighting();
     mesh.drawFaces();
+    ofDisableLighting();
+
     ofSetColor(255,255,255);
     light.draw();
     
     
     // draw our normals, and show that they are perpendicular to the vector from the center to the vertex
-    vector<ofVec3f> n = mesh.getNormals();
-    vector<ofVec3f> v = mesh.getVertices();
+    auto n = mesh.getNormals();
+    auto v = mesh.getVertices();
     float normalLength = 50.;
     
     if(!ofGetKeyPressed()){
-        ofDisableLighting();
         ofSetColor(255,255,255,70);         
         for(unsigned int i=0; i < n.size() ;i++){
-            ofLine(v[i].x,v[i].y,v[i].z,
+            ofDrawLine(v[i].x,v[i].y,v[i].z,
                    v[i].x+n[i].x*normalLength,v[i].y+n[i].y*normalLength,v[i].z+n[i].z*normalLength);
 
-            ofLine(.98*v[i].x,.98*v[i].y,.98*v[i].z,
+            ofDrawLine(.98*v[i].x,.98*v[i].y,.98*v[i].z,
                    .98*v[i].x+n[i].x*normalLength*.2,.98*v[i].y+n[i].y*normalLength*.2,.98*v[i].z+n[i].z*normalLength*.2);
-            ofLine(.98*v[i].x+n[i].x*normalLength*.2,.98*v[i].y+n[i].y*normalLength*.2,.98*v[i].z+n[i].z*normalLength*.2,
+            ofDrawLine(.98*v[i].x+n[i].x*normalLength*.2,.98*v[i].y+n[i].y*normalLength*.2,.98*v[i].z+n[i].z*normalLength*.2,
                    v[i].x+n[i].x*normalLength*.2,v[i].y+n[i].y*normalLength*.2,v[i].z+n[i].z*normalLength*.2);
         }
     }
@@ -125,7 +128,7 @@ void ofApp::draw(){
 
     cam.end();
 
-    ofSetColor(255,255,255);
+    ofSetColor(255);
     ofDrawBitmapString("press any key or mouse button to disable mesh normals", 20,20);
     ofDrawBitmapString("light", cam.worldToScreen(light.getGlobalPosition()) + ofPoint(10,0));
 }
@@ -157,6 +160,16 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
 
 }
 

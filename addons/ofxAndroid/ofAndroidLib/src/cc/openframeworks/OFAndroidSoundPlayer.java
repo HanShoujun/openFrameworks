@@ -13,6 +13,7 @@ public class OFAndroidSoundPlayer extends OFAndroidObject{
 		bIsLoaded = false;
 		bIsPlaying = false;
 		loop = false;
+		speed = 1.0f;
 		soundID = -1;
 		streamID = -1;
 		multiPlay = false;
@@ -40,6 +41,7 @@ public class OFAndroidSoundPlayer extends OFAndroidObject{
 	
 	void unloadSound(){
 		if(player!=null){
+			player.reset();
 			player.release();
 			player = null;
 		}
@@ -83,8 +85,8 @@ public class OFAndroidSoundPlayer extends OFAndroidObject{
 		// see: Curtis Roads: Computer Music Tutorial p 460
 		// thanks to jasch
 		float angle = pan * 0.7853981633974483f; // in radians from -45. to +45.
-		float cosAngle = FloatMath.cos(angle);
-		float sinAngle = FloatMath.sin(angle);
+		float cosAngle = (float) Math.cos(angle);
+		float sinAngle = (float) Math.sin(angle);
 		leftVolume  = (float)((cosAngle - sinAngle) * 0.7071067811865475) * vol; // multiplied by sqrt(2)/2
 		rightVolume = (float)((cosAngle + sinAngle) * 0.7071067811865475) * vol; // multiplied by sqrt(2)/2
 		if(stream){
@@ -171,10 +173,11 @@ public class OFAndroidSoundPlayer extends OFAndroidObject{
 	}
 	
 	boolean getIsPlaying(){
-		if(stream)
+		if(stream){
 			return player!=null && player.isPlaying();
-		else
+		}else{
 			return bIsPlaying;
+		}
 	}
 	
 	float getSpeed(){

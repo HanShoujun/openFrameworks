@@ -171,13 +171,13 @@ void ofApp::render1DNoiseStrip (float x, float y, float width, float height, flo
 	// Yes, this is a drop shadow
 	ofFill();
 	ofSetColor(0,0,0, 10); 
-	ofRect(0,0, width+4, height+2);
-	ofRect(0,0, width+2, height+4); 
+	ofDrawRectangle(0,0, width+4, height+2);
+	ofDrawRectangle(0,0, width+2, height+4); 
 	
 	// Draw a white box underneath the strip
 	ofFill();
 	ofSetColor(255,255,255); 
-	ofRect(0,0, width, height); 
+	ofDrawRectangle(0,0, width, height); 
 	
 	// Draw a filled gray noise terrain.
 	ofEnableSmoothing();
@@ -195,7 +195,7 @@ void ofApp::render1DNoiseStrip (float x, float y, float width, float height, flo
 	
 	// Draw the black line of the noise waveform
 	ofNoFill();
-	ofSetColor(0,0,0); 
+	ofSetColor(255,0,0);
 	ofBeginShape();	
 	for (int i=0; i<NOISE_DATA_STRIP_LENGTH; i++){
 		float px = ofMap(i, 0,(NOISE_DATA_STRIP_LENGTH-1), width,0); 
@@ -208,7 +208,7 @@ void ofApp::render1DNoiseStrip (float x, float y, float width, float height, flo
 	ofDisableSmoothing();
 	ofNoFill();
 	ofSetColor(0,0,0); 
-	ofRect(0,0, width, height);
+	ofDrawRectangle(0,0, width, height);
 	
 	// Draw the dt noise-step factor
 	if (dt > 0){
@@ -248,6 +248,16 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseEntered(int x, int y){
+
+}
+
+//--------------------------------------------------------------
+void ofApp::mouseExited(int x, int y){
 
 }
 

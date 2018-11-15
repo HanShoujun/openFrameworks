@@ -6,16 +6,15 @@
  *
  */
 
-#import <UIKit/UIKit.h>
-#import "ofMain.h"
-#import "ofxiOSExtras.h"
 #pragma once
+
+#import <UIKit/UIKit.h>
+#include "ofConstants.h"
 
 @interface ofxiOSKeyboardDelegate : NSObject <UITextFieldDelegate>
 {
 	UITextField*			_textField;
 	bool					open;
-	char *					_ctext;
 	int						_x;
 	int						_y;
 	int						_w;
@@ -27,7 +26,7 @@
 - (id) init: (int)x y:(int)y width:(int)w height:(int)h;
 - (void) showText;
 - (void) hideText;
-- (char *) getText;
+- (const char *) getText;
 - (const char*) getLabelText;
 - (void) setText: (NSString *)text;
 - (void) setFontSize: (int)size;
@@ -40,7 +39,7 @@
 - (void) updateOrientation;
 - (void) makeSecure;
 - (void) setFieldLength: (int)len;
-
+- (UITextField *)getTextField;
 
 @end
 
@@ -61,18 +60,18 @@ public:
 	void setFontSize(int ptSize);
 	void setFontColor(int r, int g, int b, int a);
 	void setBgColor(int r, int g, int b, int a);
-	void setText(string _text);
-	void setPlaceholder(string _text);
+	void setText(std::string _text);
+	void setPlaceholder(std::string _text);
 	void openKeyboard();
 	void updateOrientation();
 	void makeSecure();
 	void setMaxChars(int max);
 	
-	string getText();
-	string getLabelText();
+	std::string getText();
+    OF_DEPRECATED_MSG("Use getText() instead.", std::string getLabelText());
 	bool isKeyboardShowing();
 	
-	
+    UITextField * getKeyboardTextField();
 	
 protected:
 	

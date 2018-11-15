@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ofGstUtils.h"
-#include "ofTypes.h"
 
 
 struct ofGstFramerate{
@@ -10,24 +9,25 @@ struct ofGstFramerate{
 };
 
 struct ofGstVideoFormat{
-  string mimetype;
-  string format_name;
+  std::string mimetype;
+  std::string format_name;
   int    width;
   int    height;
-  vector<ofGstFramerate> framerates;
+  std::vector<ofGstFramerate> framerates;
   ofGstFramerate choosen_framerate;
 };
 
 struct ofGstDevice{
-  string video_device;
-  string gstreamer_src;
-  string product_name;
-  vector<ofGstVideoFormat> video_formats;
+  std::string video_device;
+  std::string gstreamer_src;
+  std::string product_name;
+  std::string serial_id;
+  std::vector<ofGstVideoFormat> video_formats;
   int current_format;
 };
 
 struct ofGstCamData{
-  vector<ofGstDevice> webcam_devices;
+    std::vector<ofGstDevice> webcam_devices;
   bool bInited;
 };
 
@@ -38,32 +38,34 @@ public:
 
 	/// needs to be called before initGrabber
 	bool setPixelFormat(ofPixelFormat pixelFormat);
-	ofPixelFormat	getPixelFormat();
+	ofPixelFormat	getPixelFormat() const;
 	
 	void videoSettings(){};//TODO: what is this??
 
-	vector<ofVideoDevice> listDevices();
+	std::vector<ofVideoDevice> listDevices() const;
 	void setDeviceID(int id);
 	void setDesiredFrameRate(int framerate);
-	bool initGrabber(int w, int h);
+	bool setup(int w, int h);
 
 	void 			update();
-	bool 			isFrameNew();
+	bool 			isFrameNew() const;
 
-	unsigned char * getPixels();
-	ofPixelsRef		getPixelsRef();
+	ofPixels&		getPixels();
+	const ofPixels &		getPixels() const;
+	ofTexture * getTexturePtr();
 
-	float 			getHeight();
-	float 			getWidth();
+	float 			getHeight() const;
+	float 			getWidth() const;
 	void 			close();
 
 	void			setVerbose(bool bVerbose);
+	bool			isInitialized() const;
 
 	ofGstVideoUtils *	getGstVideoUtils();
 private:
-	ofGstVideoFormat&	selectFormat(int w, int h, int desired_framerate);
+	ofGstVideoFormat&	selectFormat(int w, int h, int desired_framerate, ofPixelFormat desiredPixelFormat);
 
-	ofGstCamData		camData;
+	mutable ofGstCamData camData;
 	bool				bIsCamera;
 	int					attemptFramerate;
 	int					deviceID;

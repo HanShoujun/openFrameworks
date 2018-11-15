@@ -4,26 +4,28 @@
 void ofApp::setup(){	
 	ofBackground(54, 54, 54, 255);
 	
+    ofSetOrientation(OF_ORIENTATION_90_RIGHT);//Set iOS to Orientation Landscape Right
+    
 	//old OF default is 96 - but this results in fonts looking larger than in other programs. 
 	ofTrueTypeFont::setGlobalDpi(72);
 
-	verdana14.loadFont("verdana.ttf", 14, true, true);
+	verdana14.load("verdana.ttf", 14, true, true);
 	verdana14.setLineHeight(18.0f);
 	verdana14.setLetterSpacing(1.037);
 
-	verdana30.loadFont("verdana.ttf", 30, true, true);
+	verdana30.load("verdana.ttf", 30, true, true);
 	verdana30.setLineHeight(34.0f);
 	verdana30.setLetterSpacing(1.035);
 	
-	verdana14A.loadFont("frabk.ttf", 14, false);
+	verdana14A.load("frabk.ttf", 14, false);
 	verdana14A.setLineHeight(18.0f);
 	verdana14A.setLetterSpacing(1.037);
 
-	franklinBook14.loadFont("frabk.ttf", 14);
+	franklinBook14.load("frabk.ttf", 14);
 	franklinBook14.setLineHeight(18.0f);
 	franklinBook14.setLetterSpacing(1.037);
 
-	franklinBook14A.loadFont("frabk.ttf", 14, false);
+	franklinBook14A.load("frabk.ttf", 14, false);
 	franklinBook14A.setLineHeight(18.0f);
 	franklinBook14A.setLetterSpacing(1.037);
 
@@ -60,6 +62,10 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	
+    if(ofGetWidth() > 480){ // then we are running retina
+        ofScale(2.0, 2.0, 1.0);
+    }
+    
 	ofPushMatrix();
 	ofTranslate(-10 + drag.x, -60 + drag.y, 0);
 
@@ -73,19 +79,19 @@ void ofApp::draw(){
 		verdana14.drawString(typeStr, 30, 111);
 
 		verdana14A.drawString("verdana 14pt - ", 422, 92);
-		ofRect(420, 97, 292, 62);
+		ofDrawRectangle(420, 97, 292, 62);
 		ofSetColor(54, 54, 54);	
 		verdana14A.drawString(typeStr, 422, 111);
 		
 		ofSetColor(29,29,29);
-		ofLine(30, 169, ofGetWidth()-4, 169);
+		ofDrawLine(30, 169, ofGetWidth()-4, 169);
 
 		ofSetColor(225);
 		verdana14.drawString("verdana 30pt - ", 30, 195);
 		verdana30.drawString(typeStr, 30, 229);
 
 		ofSetColor(29,29,29);
-		ofLine(30, 312, ofGetWidth()-4, 312);
+		ofDrawLine(30, 312, ofGetWidth()-4, 312);
 
 		ofSetColor(245, 58, 135);
 		franklinBook14.drawString("anti aliased", 162, 338);
@@ -96,12 +102,12 @@ void ofApp::draw(){
 		franklinBook14.drawString(typeStr, 30, 358);
 
 		franklinBook14A.drawString("franklin book 14pt - ", 422, 338);
-		ofRect(420, 345, 292, 62);
+		ofDrawRectangle(420, 345, 292, 62);
 		ofSetColor(54, 54, 54);	
 		franklinBook14A.drawString(typeStr, 422, 358);
 
 		ofSetColor(29,29,29);
-		ofLine(30, 418, ofGetWidth()-4, 418);
+		ofDrawLine(30, 418, ofGetWidth()-4, 418);
 
 		ofSetColor(225);	
 		verdana14.drawString("ROTATION", 30, 445);

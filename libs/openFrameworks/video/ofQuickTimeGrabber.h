@@ -2,7 +2,8 @@
 
 #include "ofConstants.h"
 
-#if !defined(TARGET_LINUX) && !defined(MAC_OS_X_VERSION_10_7)
+#if !defined(TARGET_LINUX) && !defined(MAC_OS_X_VERSION_10_7) && (!defined(MAC_OS_X_VERSION_10_12) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12)
+
 	#include "ofQtUtils.h"
 	#include "ofTexture.h"
 	#include "ofBaseTypes.h"
@@ -20,24 +21,25 @@ class ofQuickTimeGrabber : public ofBaseVideoGrabber{
 		ofQuickTimeGrabber();
 		virtual ~ofQuickTimeGrabber();
 
-        vector<ofVideoDevice>	listDevices();
-		bool					initGrabber(int w, int h);
+        vector<ofVideoDevice>	listDevices() const;
+		bool					setup(int w, int h);
 		void					update();
-		bool					isFrameNew();
+		bool					isFrameNew() const;
+        bool                    isInitialized() const;
 
 		bool					setPixelFormat(ofPixelFormat pixelFormat);
-		ofPixelFormat			getPixelFormat();
+		ofPixelFormat			getPixelFormat() const;
 
-		unsigned char			* getPixels();
-		ofPixelsRef		 		getPixelsRef();
-		
+        ofPixels&		 		getPixels();
+        const ofPixels&		    getPixels() const;
+
 		void					close();
 		void					clearMemory();
 
 		void					videoSettings();
 		
-		float					getWidth();
-		float					getHeight();
+		float					getWidth() const;
+		float					getHeight() const;
 
 		void					setVerbose(bool bTalkToMe);
 		void					setDeviceID(int _deviceID);
@@ -75,6 +77,5 @@ class ofQuickTimeGrabber : public ofBaseVideoGrabber{
 		
 
 };
-
 
 #endif
